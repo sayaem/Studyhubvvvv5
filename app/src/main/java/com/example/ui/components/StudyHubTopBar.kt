@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -109,7 +111,8 @@ fun StudyHubLogoMark(modifier: Modifier = Modifier, size: Dp = 34.dp) {
 fun StudyHubTopBar(
     modifier: Modifier = Modifier,
     unreadNotificationCount: Int = 0,
-    onNotificationClick: () -> Unit
+    onNotificationClick: () -> Unit,
+    onSettingsClick: (() -> Unit)? = null
 ) {
     Box(
         modifier = modifier
@@ -138,30 +141,54 @@ fun StudyHubTopBar(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Notification Bell with Badge
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onNotificationClick),
-                contentAlignment = Alignment.Center
+            // Header Action Group: Notification Bell + Settings Gear
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Notifications,
-                    contentDescription = "Notifications",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.size(24.dp)
-                )
+                // Notification Bell with Badge
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onNotificationClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Notifications,
+                        contentDescription = "Notifications",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(24.dp)
+                    )
 
-                if (unreadNotificationCount > 0) {
+                    if (unreadNotificationCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 7.dp, end = 7.dp)
+                                .size(8.5.dp)
+                                .background(StatusDanger, CircleShape)
+                                .border(1.5.dp, MaterialTheme.colorScheme.background, CircleShape)
+                        )
+                    }
+                }
+
+                // Settings Gear Icon
+                if (onSettingsClick != null) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 7.dp, end = 7.dp)
-                            .size(8.5.dp)
-                            .background(StatusDanger, CircleShape)
-                            .border(1.5.dp, MaterialTheme.colorScheme.background, CircleShape)
-                    )
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onSettingsClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Settings,
+                            contentDescription = "Settings",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.size(23.dp)
+                        )
+                    }
                 }
             }
         }

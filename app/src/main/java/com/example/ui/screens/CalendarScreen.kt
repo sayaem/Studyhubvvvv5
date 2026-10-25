@@ -204,7 +204,7 @@ fun CalendarScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(bottom = paddingValues.calculateBottomPadding())
                 .background(MaterialTheme.colorScheme.background)
         ) {
             // =========================================================================
@@ -213,7 +213,7 @@ fun CalendarScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                    .padding(start = 20.dp, end = 20.dp, top = 2.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -393,6 +393,7 @@ fun CalendarScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(IntrinsicSize.Min)
                     .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -401,21 +402,24 @@ fun CalendarScreen(
                 val progressTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 Card(
                     modifier = Modifier
-                        .weight(1.2f)
+                        .weight(1f)
+                        .fillMaxHeight()
                         .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Canvas(modifier = Modifier.fillMaxSize()) {
-                                val strokeWidth = 3.5.dp.toPx()
+                                val strokeWidth = 3.dp.toPx()
                                 drawArc(
                                     color = progressTrackColor,
                                     startAngle = -90f,
@@ -433,16 +437,22 @@ fun CalendarScreen(
                             }
                             Text(
                                 text = "$completedTasksCount/$totalTasksCount",
-                                fontSize = 10.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text("Tasks Done", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "$completedTasksCount completed",
+                                text = "Tasks Done",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "$completedTasksCount done",
                                 fontSize = 10.sp,
                                 color = TextSecondary,
                                 maxLines = 1,
@@ -460,28 +470,43 @@ fun CalendarScreen(
 
                 Card(
                     modifier = Modifier
-                        .weight(1.1f)
+                        .weight(1f)
+                        .fillMaxHeight()
                         .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(32.dp)
                                 .clip(CircleShape)
                                 .background(BrandBlue.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(17.dp))
+                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(16.dp))
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text("Study Time", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text("$studyTimeStr / ${targetHours}h", fontSize = 10.sp, color = TextSecondary, maxLines = 1)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Study Time",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "$studyTimeStr / ${targetHours}h",
+                                fontSize = 10.sp,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -490,27 +515,42 @@ fun CalendarScreen(
                 Card(
                     modifier = Modifier
                         .weight(1f)
+                        .fillMaxHeight()
                         .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 8.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
+                                .size(32.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFFF97316).copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFF97316), modifier = Modifier.size(17.dp))
+                            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFF97316), modifier = Modifier.size(16.dp))
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text("Streak", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Text("$currentStreak days", fontSize = 10.sp, color = TextSecondary)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Streak",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "$currentStreak days",
+                                fontSize = 10.sp,
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -832,48 +872,6 @@ fun CalendarScreen(
                                             }
                                         }
                                     }
-                                }
-                            }
-                        }
-                    }
-
-                    // Bottom "+ Add New Plan" Card
-                    item {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .border(
-                                    width = 1.dp,
-                                    color = BrandBlue.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .clickable {
-                                    editingPlan = null
-                                    showPlanSheet = true
-                                },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(BrandBlue.copy(alpha = 0.12f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(20.dp))
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text("Add New Plan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text("Study session, exam, assignment, or other task", fontSize = 11.sp, color = TextSecondary)
                                 }
                             }
                         }

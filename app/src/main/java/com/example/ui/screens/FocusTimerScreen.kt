@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -198,77 +199,107 @@ fun FocusTimerScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 18.dp, vertical = 10.dp)
+            .padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 8.dp)
     ) {
         // --- Top Bar Header ---
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp)
+            ) {
                 Text(
                     text = "Focus Command Center",
-                    style = MaterialTheme.typography.titleLarge.copy(
+                    style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        letterSpacing = (-0.2).sp,
                         color = MaterialTheme.colorScheme.onBackground
-                    )
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "Level $userLevel Scholar • $streakDays Day Streak 🔥",
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = BrandTeal,
-                        fontWeight = FontWeight.Bold
-                    )
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
                 // Ambient Sound Chip
                 Surface(
                     onClick = { showAmbientSheet = true },
-                    shape = RoundedCornerShape(20.dp),
-                    color = if (ambientSoundType != "OFF") BrandTeal.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, if (ambientSoundType != "OFF") BrandTeal else MaterialTheme.colorScheme.outline)
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (ambientSoundType != "OFF") BrandTeal.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (ambientSoundType != "OFF") BrandTeal else MaterialTheme.colorScheme.outline
+                    )
                 ) {
                     Row(
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = if (ambientSoundType != "OFF") Icons.Default.GraphicEq else Icons.Default.MusicNote,
                             contentDescription = "Ambient Sounds",
                             tint = if (ambientSoundType != "OFF") BrandTeal else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(13.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
                         Text(
                             text = if (ambientSoundType != "OFF") ambientSoundType else "Sound",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (ambientSoundType != "OFF") BrandTeal else MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (ambientSoundType != "OFF") BrandTeal else MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
 
                 // Focus Settings Cog
-                IconButton(
+                Surface(
                     onClick = { showSettingsSheet = true },
-                    modifier = Modifier.size(34.dp)
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Focus Settings",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Box(
+                        modifier = Modifier.size(30.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Focus Settings",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
                 }
 
-                // View Switcher (Timer / Stats)
+                // Stats / Timer Pill Button (Horizontal, compact, never wraps vertically)
                 Surface(
                     onClick = { activeTab = if (activeTab == "TIMER") "ANALYTICS" else "TIMER" },
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (activeTab == "ANALYTICS") BrandTeal else BrandTeal.copy(alpha = 0.12f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, BrandTeal)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
@@ -276,23 +307,25 @@ fun FocusTimerScreen(
                     ) {
                         Icon(
                             imageVector = if (activeTab == "TIMER") Icons.Default.Analytics else Icons.Default.Timer,
-                            contentDescription = "Toggle View",
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(15.dp)
+                            contentDescription = if (activeTab == "TIMER") "Stats" else "Timer",
+                            tint = if (activeTab == "ANALYTICS") Color.White else BrandTeal,
+                            modifier = Modifier.size(13.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = if (activeTab == "TIMER") "Stats" else "Timer",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = if (activeTab == "ANALYTICS") Color.White else BrandTeal,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (activeTab == "TIMER") {
             // ==========================================
@@ -308,9 +341,9 @@ fun FocusTimerScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(4.dp),
+                            .padding(3.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         val modes = listOf(
@@ -328,7 +361,7 @@ fun FocusTimerScreen(
                                     .background(if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent)
                                     .border(
                                         width = if (isSelected) 1.dp else 0.dp,
-                                        color = if (isSelected) primaryModeColor else Color.Transparent,
+                                        color = if (isSelected) primaryModeColor.copy(alpha = 0.5f) else Color.Transparent,
                                         shape = RoundedCornerShape(10.dp)
                                     )
                                     .clickable { onSelectMode(modeKey) }
@@ -337,9 +370,11 @@ fun FocusTimerScreen(
                             ) {
                                 Text(
                                     text = label,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                                    color = if (isSelected) primaryModeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                    fontSize = 11.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) primaryModeColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                             }
                         }
@@ -367,6 +402,7 @@ fun FocusTimerScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
                             .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp)),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -377,35 +413,55 @@ fun FocusTimerScreen(
                                 .padding(vertical = 16.dp, horizontal = 16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Pomodoro Cycle dots if Pomodoro
-                            if (timerMode == "POMODORO") {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
+                            // Stable top indicator slot (fixed height 26.dp)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(26.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (timerMode == "POMODORO") {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Cycle $currentCycle of $targetCycles",
+                                            fontSize = 11.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextSecondary
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        (1..targetCycles).forEach { idx ->
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(9.dp)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        when {
+                                                            idx < currentCycle -> StatusSuccess
+                                                            idx == currentCycle -> primaryModeColor
+                                                            else -> MaterialTheme.colorScheme.surfaceVariant
+                                                        }
+                                                    )
+                                            )
+                                        }
+                                    }
+                                } else {
                                     Text(
-                                        text = "Cycle $currentCycle of $targetCycles:",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        text = when (timerMode) {
+                                            "DEEP_FOCUS" -> "50 min Uninterrupted Block"
+                                            "SIMPLE_TIMER" -> "Custom Countdown Timer"
+                                            else -> "Open-ended Stopwatch Session"
+                                        },
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = TextSecondary
                                     )
-                                    (1..targetCycles).forEach { idx ->
-                                        Box(
-                                            modifier = Modifier
-                                                .size(10.dp)
-                                                .clip(CircleShape)
-                                                .background(
-                                                    when {
-                                                        idx < currentCycle -> StatusSuccess
-                                                        idx == currentCycle -> primaryModeColor
-                                                        else -> MaterialTheme.colorScheme.surfaceVariant
-                                                    }
-                                                )
-                                        )
-                                    }
                                 }
-                                Spacer(modifier = Modifier.height(10.dp))
                             }
+
+                            Spacer(modifier = Modifier.height(6.dp))
 
                             val trackColor = MaterialTheme.colorScheme.surfaceVariant
 
@@ -448,6 +504,7 @@ fun FocusTimerScreen(
                                         text = displayTime,
                                         fontSize = if (displayMinutes >= 60) 34.sp else 42.sp,
                                         fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = (-1).sp,
                                         color = MaterialTheme.colorScheme.onBackground
                                     )
 
@@ -467,141 +524,258 @@ fun FocusTimerScreen(
                                         color = primaryModeColor
                                     )
 
-                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(10.dp))
 
-                                    // Big Play/Pause Action Button inside Ring
-                                    Box(
+                                    // Big Play/Pause Action Button inside Ring with crisp styling
+                                    Surface(
+                                        onClick = {
+                                            when (timerStatus) {
+                                                TimerStatus.IDLE -> onStartTimer()
+                                                TimerStatus.RUNNING -> onPauseTimer()
+                                                TimerStatus.PAUSED -> onResumeTimer()
+                                                TimerStatus.COMPLETED -> onResetTimer()
+                                            }
+                                        },
+                                        shape = CircleShape,
+                                        color = primaryModeColor,
+                                        border = androidx.compose.foundation.BorderStroke(2.dp, Color.White.copy(alpha = 0.4f)),
+                                        shadowElevation = 3.dp,
                                         modifier = Modifier
-                                            .size(52.dp)
-                                            .clip(CircleShape)
-                                            .background(primaryModeColor)
+                                            .size(56.dp)
                                             .testTag("focus_play_pause_button")
-                                            .clickable {
-                                                when (timerStatus) {
-                                                    TimerStatus.IDLE -> onStartTimer()
-                                                    TimerStatus.RUNNING -> onPauseTimer()
-                                                    TimerStatus.PAUSED -> onResumeTimer()
-                                                    TimerStatus.COMPLETED -> onResetTimer()
-                                                }
-                                            },
-                                        contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(
-                                            imageVector = when (timerStatus) {
-                                                TimerStatus.RUNNING -> Icons.Default.Pause
-                                                else -> Icons.Default.PlayArrow
-                                            },
-                                            contentDescription = "Timer Action",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(30.dp)
-                                        )
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = when (timerStatus) {
+                                                    TimerStatus.RUNNING -> Icons.Default.Pause
+                                                    else -> Icons.Default.PlayArrow
+                                                },
+                                                contentDescription = "Timer Action",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(30.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                            // Secondary Control Row (Reset, Skip/Finish, Distraction Counter, Strict Mode)
-                            if (timerStatus == TimerStatus.RUNNING || timerStatus == TimerStatus.PAUSED) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedButton(
-                                        onClick = onResetTimer,
-                                        shape = RoundedCornerShape(12.dp)
+                            // Secondary Control Slot: Stable 40dp height container for both Idle & Active states
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (timerStatus == TimerStatus.RUNNING || timerStatus == TimerStatus.PAUSED) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(15.dp))
-                                        Spacer(modifier = Modifier.width(3.dp))
-                                        Text("Reset", fontSize = 12.sp)
-                                    }
-
-                                    if (timerMode == "POMODORO") {
-                                        OutlinedButton(
-                                            onClick = onSkipPhase,
-                                            shape = RoundedCornerShape(12.dp)
+                                        // Reset Button
+                                        Surface(
+                                            onClick = onResetTimer,
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(38.dp)
                                         ) {
-                                            Icon(Icons.Default.SkipNext, contentDescription = null, modifier = Modifier.size(15.dp))
-                                            Spacer(modifier = Modifier.width(3.dp))
-                                            Text("Skip", fontSize = 12.sp)
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Refresh,
+                                                    contentDescription = "Reset",
+                                                    modifier = Modifier.size(15.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    "Reset",
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                            }
+                                        }
+
+                                        // Skip Button (if Pomodoro)
+                                        if (timerMode == "POMODORO") {
+                                            Surface(
+                                                onClick = onSkipPhase,
+                                                shape = RoundedCornerShape(12.dp),
+                                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(38.dp)
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier.padding(horizontal = 6.dp),
+                                                    horizontalArrangement = Arrangement.Center,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.SkipNext,
+                                                        contentDescription = "Skip",
+                                                        modifier = Modifier.size(15.dp),
+                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                    Spacer(modifier = Modifier.width(3.dp))
+                                                    Text(
+                                                        "Skip",
+                                                        fontSize = 11.5.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                        softWrap = false
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Distraction Counter
+                                        Surface(
+                                            onClick = onRecordDistraction,
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (distractionCount > 0) Color(0xFFEF4444).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                1.dp,
+                                                if (distractionCount > 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline
+                                            ),
+                                            modifier = Modifier
+                                                .weight(if (timerMode == "POMODORO") 1.25f else 1.4f)
+                                                .height(38.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.NotificationsActive,
+                                                    contentDescription = "Distraction",
+                                                    tint = if (distractionCount > 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    text = if (distractionCount > 0) "+ Distract ($distractionCount)" else "+ Distract",
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (distractionCount > 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                            }
+                                        }
+
+                                        // Finish Button
+                                        Surface(
+                                            onClick = { showReflectionDialog = true },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = primaryModeColor,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(38.dp)
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 6.dp),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(Icons.Default.Check, contentDescription = "Finish", tint = Color.White, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text("Finish", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.5.sp, maxLines = 1, softWrap = false)
+                                            }
                                         }
                                     }
-
-                                    // Self-reported distraction counter
-                                    Surface(
-                                        onClick = onRecordDistraction,
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = if (distractionCount > 0) Color(0xFFEF4444).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, if (distractionCount > 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline)
+                                } else {
+                                    // Idle Controls: Strict Mode Toggle & Set Custom Time (Identical 38.dp height)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                        // Strict Focus Toggle Chip
+                                        Surface(
+                                            onClick = { onToggleStrict(!isStrictFocus) },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isStrictFocus) Color(0xFFEF4444).copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                                            border = androidx.compose.foundation.BorderStroke(
+                                                1.dp,
+                                                if (isStrictFocus) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline
+                                            ),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(38.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.NotificationsActive,
-                                                contentDescription = "Distraction",
-                                                tint = if (distractionCount > 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(15.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = if (distractionCount > 0) "+ Distraction ($distractionCount)" else "+ Distraction",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (distractionCount > 0) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Lock,
+                                                    contentDescription = "Strict Mode",
+                                                    tint = if (isStrictFocus) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(5.dp))
+                                                Text(
+                                                    text = if (isStrictFocus) "Strict Focus ON" else "Strict Focus OFF",
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isStrictFocus) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                            }
                                         }
-                                    }
 
-                                    Button(
-                                        onClick = { showReflectionDialog = true },
-                                        colors = ButtonDefaults.buttonColors(containerColor = primaryModeColor),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
-                                        Spacer(modifier = Modifier.width(3.dp))
-                                        Text("Finish", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                    }
-                                }
-                            } else {
-                                // Idle Controls: Strict Mode Toggle & Quick Duration Chips
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Strict Focus Toggle Chip
-                                    Surface(
-                                        onClick = { onToggleStrict(!isStrictFocus) },
-                                        shape = RoundedCornerShape(14.dp),
-                                        color = if (isStrictFocus) Color(0xFFEF4444).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isStrictFocus) Color(0xFFEF4444) else MaterialTheme.colorScheme.outline)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                            verticalAlignment = Alignment.CenterVertically
+                                        // Custom Duration Button
+                                        Surface(
+                                            onClick = { showCustomDurationDialog = true },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = BrandTeal.copy(alpha = 0.10f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, BrandTeal.copy(alpha = 0.5f)),
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(38.dp)
                                         ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Lock,
-                                                contentDescription = "Strict Mode",
-                                                tint = if (isStrictFocus) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = if (isStrictFocus) "Strict Focus ON" else "Strict Focus OFF",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isStrictFocus) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 10.dp),
+                                                horizontalArrangement = Arrangement.Center,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Timer,
+                                                    contentDescription = "Set Custom Time",
+                                                    tint = BrandTeal,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(5.dp))
+                                                Text(
+                                                    text = "Set Custom Time",
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = BrandTeal,
+                                                    maxLines = 1,
+                                                    softWrap = false
+                                                )
+                                            }
                                         }
-                                    }
-
-                                    // Custom Duration Button
-                                    TextButton(onClick = { showCustomDurationDialog = true }) {
-                                        Text("Set Custom Time", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = BrandTeal)
                                     }
                                 }
                             }
@@ -659,57 +833,84 @@ fun FocusTimerScreen(
                             Text(
                                 text = "Saved Presets",
                                 style = MaterialTheme.typography.titleSmall.copy(
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onBackground
                                 )
                             )
-                            TextButton(onClick = { showCustomPresetSheet = true }) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(15.dp))
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Text("New Preset", fontSize = 11.sp, color = BrandTeal)
+                            TextButton(
+                                onClick = { showCustomPresetSheet = true },
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, tint = BrandTeal, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("+ New Preset", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BrandTeal)
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(4.dp))
+
                         LazyRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(presets, key = { it.id }) { preset ->
+                                val isCurrentPreset = preset.mode == timerMode &&
+                                    preset.workMinutes == (totalDurationSeconds / 60)
+
                                 Card(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .widthIn(min = 145.dp)
+                                        .clip(RoundedCornerShape(14.dp))
                                         .clickable { onApplyPreset(preset) }
-                                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp)),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                                        .border(
+                                            width = if (isCurrentPreset) 1.5.dp else 1.dp,
+                                            color = if (isCurrentPreset) BrandTeal else MaterialTheme.colorScheme.outline,
+                                            shape = RoundedCornerShape(14.dp)
+                                        ),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = if (isCurrentPreset) BrandTeal.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
+                                    )
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Column {
+                                        Column(modifier = Modifier.weight(1f, fill = false)) {
                                             Text(
                                                 text = preset.title,
-                                                fontSize = 12.sp,
+                                                fontSize = 12.5.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                maxLines = 1
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            val modeDisplay = when (preset.mode) {
+                                                "POMODORO" -> "Pomodoro"
+                                                "DEEP_FOCUS" -> "Deep Focus"
+                                                "SIMPLE_TIMER" -> "Timer"
+                                                else -> "Stopwatch"
+                                            }
                                             Text(
-                                                text = "${preset.workMinutes}m • ${preset.mode}",
-                                                fontSize = 10.sp,
-                                                color = TextSecondary
+                                                text = "${preset.workMinutes}m • $modeDisplay",
+                                                fontSize = 11.sp,
+                                                color = TextSecondary,
+                                                maxLines = 1
                                             )
                                         }
                                         if (!preset.isDefault) {
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
                                             IconButton(
                                                 onClick = { onDeletePreset(preset) },
-                                                modifier = Modifier.size(24.dp)
+                                                modifier = Modifier.size(22.dp)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Delete,
                                                     contentDescription = "Delete Preset",
                                                     tint = TextMuted,
-                                                    modifier = Modifier.size(14.dp)
+                                                    modifier = Modifier.size(13.dp)
                                                 )
                                             }
                                         }

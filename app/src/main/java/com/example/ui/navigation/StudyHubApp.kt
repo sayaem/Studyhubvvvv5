@@ -310,7 +310,8 @@ fun StudyHubApp(
                             if (!isSubjectDetailOpen || currentNavDestination != NavDestination.SYLLABUS) {
                                 StudyHubTopBar(
                                     unreadNotificationCount = unreadNotificationsCount,
-                                    onNotificationClick = { navigateTo(NavigationDestination.Notifications) }
+                                    onNotificationClick = { navigateTo(NavigationDestination.Notifications) },
+                                    onSettingsClick = { navigateTo(NavigationDestination.Settings) }
                                 )
                             }
                         },

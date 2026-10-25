@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -381,10 +382,10 @@ fun HomeScreen(
             }
             item {
                 QuickActionButton(
-                    icon = Icons.Default.School,
-                    label = "Add Target",
+                    icon = Icons.Default.TrackChanges,
+                    label = "Target",
                     color = Color(0xFF8B5CF6),
-                    onClick = onAddAdmissionClick
+                    onClick = onOpenAdmissionCalendar
                 )
             }
         }
@@ -690,7 +691,9 @@ fun QuickActionButton(
             text = label,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

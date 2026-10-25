@@ -82,9 +82,30 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     val appSettings: StateFlow<AppSettingsEntity?> = repository.appSettings
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Focus Timer State
+    val focusPresets: StateFlow<List<com.example.data.local.FocusPresetEntity>> = repository.allFocusPresets
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val focusGamification: StateFlow<com.example.data.local.FocusGamificationEntity?> = repository.focusGamification
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Focus 2.0 Timer State
     private val _timerStatus = MutableStateFlow(TimerStatus.IDLE)
     val timerStatus: StateFlow<TimerStatus> = _timerStatus.asStateFlow()
+
+    private val _timerMode = MutableStateFlow("POMODORO") // "POMODORO", "DEEP_FOCUS", "SIMPLE_TIMER", "STOPWATCH"
+    val timerMode: StateFlow<String> = _timerMode.asStateFlow()
+
+    private val _pomodoroPhase = MutableStateFlow("WORK") // "WORK", "SHORT_BREAK", "LONG_BREAK"
+    val pomodoroPhase: StateFlow<String> = _pomodoroPhase.asStateFlow()
+
+    private val _currentCycle = MutableStateFlow(1)
+    val currentCycle: StateFlow<Int> = _currentCycle.asStateFlow()
+
+    private val _targetCycles = MutableStateFlow(4)
+    val targetCycles: StateFlow<Int> = _targetCycles.asStateFlow()
+
+    private val _isStrictFocus = MutableStateFlow(false)
+    val isStrictFocus: StateFlow<Boolean> = _isStrictFocus.asStateFlow()
 
     private val _timeRemainingSeconds = MutableStateFlow(25 * 60)
     val timeRemainingSeconds: StateFlow<Int> = _timeRemainingSeconds.asStateFlow()
@@ -98,9 +119,31 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     private val _timerSubjectId = MutableStateFlow<Long?>(null)
     val timerSubjectId: StateFlow<Long?> = _timerSubjectId.asStateFlow()
 
+    private val _selectedGoalTask = MutableStateFlow<String?>(null)
+    val selectedGoalTask: StateFlow<String?> = _selectedGoalTask.asStateFlow()
+
+    private val _ambientSoundType = MutableStateFlow("OFF")
+    val ambientSoundType: StateFlow<String> = _ambientSoundType.asStateFlow()
+
+    private val _ambientVolume = MutableStateFlow(0.7f)
+    val ambientVolume: StateFlow<Float> = _ambientVolume.asStateFlow()
+
+    val ambientSoundManager = com.example.notifications.AmbientSoundManager()
+
+    // Persistent Wall-Clock Timing Parameters
+    private var startTimeMs: Long = 0L
+    private var targetDurationMs: Long = 25 * 60 * 1000L
+    private var accumulatedPauseMs: Long = 0L
+    private var lastPauseMs: Long = 0L
+
     private var timerJob: Job? = null
-    private var sessionStartTime: Long = 0L
     private var lastRecordedSessionId: Long? = null
+
+    init {
+        viewModelScope.launch {
+            repository.seedDefaultFocusPresetsIfEmpty()
+        }
+    }
 
     // Date formatting helper
     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
@@ -154,11 +197,83 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     }
 
     // Timer Actions
+    fun setTimerMode(mode: String) {
+        if (_timerStatus.value == TimerStatus.RUNNING) return
+        _timerMode.value = mode
+        when (mode) {
+            "POMODORO" -> {
+                _pomodoroPhase.value = "WORK"
+                _currentCycle.value = 1
+                selectTimerDuration(25, "POMODORO_FOCUS")
+            }
+            "DEEP_FOCUS" -> {
+                selectTimerDuration(50, "POMODORO_FOCUS")
+            }
+            "SIMPLE_TIMER" -> {
+                selectTimerDuration(15, "CUSTOM")
+            }
+            "STOPWATCH" -> {
+                _timerJobCancel()
+                _totalDurationSeconds.value = 0
+                _timeRemainingSeconds.value = 0
+                _selectedSessionType.value = "CUSTOM"
+                _timerStatus.value = TimerStatus.IDLE
+            }
+        }
+    }
+
+    fun applyPreset(preset: com.example.data.local.FocusPresetEntity) {
+        if (_timerStatus.value == TimerStatus.RUNNING) return
+        _timerMode.value = preset.mode
+        _isStrictFocus.value = preset.isStrict
+        _targetCycles.value = preset.targetCycles
+        _currentCycle.value = 1
+        _pomodoroPhase.value = "WORK"
+        selectTimerDuration(preset.workMinutes, if (preset.mode == "POMODORO") "POMODORO_FOCUS" else "CUSTOM")
+    }
+
+    fun saveCustomPreset(
+        title: String,
+        mode: String,
+        workMins: Int,
+        shortBreakMins: Int,
+        longBreakMins: Int,
+        cycles: Int,
+        isStrict: Boolean
+    ) {
+        viewModelScope.launch {
+            repository.saveFocusPreset(
+                com.example.data.local.FocusPresetEntity(
+                    title = title.ifBlank { "Custom $workMins m" },
+                    mode = mode,
+                    workMinutes = workMins,
+                    shortBreakMinutes = shortBreakMins,
+                    longBreakMinutes = longBreakMins,
+                    targetCycles = cycles,
+                    isStrict = isStrict,
+                    isDefault = false
+                )
+            )
+        }
+    }
+
+    fun deleteFocusPreset(preset: com.example.data.local.FocusPresetEntity) {
+        viewModelScope.launch {
+            repository.deleteFocusPreset(preset)
+        }
+    }
+
+    fun setGoalTask(goal: String?) {
+        _selectedGoalTask.value = goal
+    }
+
     fun selectTimerDuration(minutes: Int, sessionType: String) {
         if (_timerStatus.value == TimerStatus.RUNNING) return
         _timerJobCancel()
-        _totalDurationSeconds.value = minutes * 60
-        _timeRemainingSeconds.value = minutes * 60
+        val secs = minutes * 60
+        _totalDurationSeconds.value = secs
+        _timeRemainingSeconds.value = secs
+        targetDurationMs = secs * 1000L
         _selectedSessionType.value = sessionType
         _timerStatus.value = TimerStatus.IDLE
     }
@@ -167,20 +282,57 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         _timerSubjectId.value = subjectId
     }
 
+    fun toggleStrictFocus(enabled: Boolean) {
+        _isStrictFocus.value = enabled
+    }
+
+    fun setAmbientSound(soundType: String) {
+        _ambientSoundType.value = soundType
+        ambientSoundManager.setSound(soundType)
+    }
+
+    fun setAmbientVolume(volume: Float) {
+        _ambientVolume.value = volume
+        ambientSoundManager.setVolume(volume)
+    }
+
     fun startTimer() {
+        val now = System.currentTimeMillis()
         if (_timerStatus.value == TimerStatus.IDLE) {
-            sessionStartTime = System.currentTimeMillis()
+            startTimeMs = now
+            accumulatedPauseMs = 0L
+        } else if (_timerStatus.value == TimerStatus.PAUSED) {
+            accumulatedPauseMs += (now - lastPauseMs)
         }
+
         _timerStatus.value = TimerStatus.RUNNING
-        timerJob?.cancel()
+
+        if (_ambientSoundType.value != "OFF") {
+            ambientSoundManager.setSound(_ambientSoundType.value)
+        }
+
+        _timerJobCancel()
         timerJob = viewModelScope.launch {
-            while (_timeRemainingSeconds.value > 0 && _timerStatus.value == TimerStatus.RUNNING) {
-                delay(1000L)
-                if (_timerStatus.value == TimerStatus.RUNNING) {
-                    _timeRemainingSeconds.value -= 1
-                }
+            while (_timerStatus.value == TimerStatus.RUNNING) {
+                delay(500L)
+                updateTimerTick()
             }
-            if (_timeRemainingSeconds.value <= 0) {
+        }
+    }
+
+    private fun updateTimerTick() {
+        if (_timerStatus.value != TimerStatus.RUNNING) return
+        val now = System.currentTimeMillis()
+        val elapsedMs = maxOf(0L, now - startTimeMs - accumulatedPauseMs)
+
+        if (_timerMode.value == "STOPWATCH") {
+            _timeRemainingSeconds.value = (elapsedMs / 1000L).toInt()
+        } else {
+            val remainMs = maxOf(0L, targetDurationMs - elapsedMs)
+            val remainSecs = (remainMs / 1000L).toInt()
+            _timeRemainingSeconds.value = remainSecs
+
+            if (remainMs <= 0) {
                 finishTimer(completedNormally = true)
             }
         }
@@ -189,7 +341,9 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     fun pauseTimer() {
         if (_timerStatus.value == TimerStatus.RUNNING) {
             _timerStatus.value = TimerStatus.PAUSED
-            timerJob?.cancel()
+            lastPauseMs = System.currentTimeMillis()
+            _timerJobCancel()
+            ambientSoundManager.stop()
         }
     }
 
@@ -201,39 +355,89 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
 
     fun resetTimer() {
         _timerJobCancel()
-        _timeRemainingSeconds.value = _totalDurationSeconds.value
+        ambientSoundManager.stop()
+        if (_timerMode.value == "STOPWATCH") {
+            _timeRemainingSeconds.value = 0
+        } else {
+            _timeRemainingSeconds.value = _totalDurationSeconds.value
+        }
         _timerStatus.value = TimerStatus.IDLE
     }
 
-    fun finishTimer(completedNormally: Boolean = false) {
-        val totalSecs = _totalDurationSeconds.value
-        val remainSecs = _timeRemainingSeconds.value
-        val elapsed = if (completedNormally) totalSecs else (totalSecs - remainSecs)
+    fun skipPhase() {
+        _timerJobCancel()
+        ambientSoundManager.stop()
+
+        if (_timerMode.value == "POMODORO") {
+            if (_pomodoroPhase.value == "WORK") {
+                if (_currentCycle.value >= _targetCycles.value) {
+                    _pomodoroPhase.value = "LONG_BREAK"
+                    selectTimerDuration(15, "LONG_BREAK")
+                } else {
+                    _pomodoroPhase.value = "SHORT_BREAK"
+                    selectTimerDuration(5, "SHORT_BREAK")
+                }
+            } else {
+                if (_pomodoroPhase.value == "LONG_BREAK") {
+                    _currentCycle.value = 1
+                } else {
+                    _currentCycle.value += 1
+                }
+                _pomodoroPhase.value = "WORK"
+                selectTimerDuration(25, "POMODORO_FOCUS")
+            }
+        } else {
+            resetTimer()
+        }
+    }
+
+    fun finishTimer(
+        completedNormally: Boolean = false,
+        rating: Int = 5,
+        notes: String? = null,
+        distractions: Int = 0,
+        onGamificationUpdated: (com.example.data.local.FocusGamificationEntity) -> Unit = {}
+    ) {
+        val now = System.currentTimeMillis()
+        val elapsedMs = if (_timerMode.value == "STOPWATCH") {
+            _timeRemainingSeconds.value * 1000L
+        } else {
+            val totalMs = _totalDurationSeconds.value * 1000L
+            if (completedNormally) totalMs else (totalMs - (_timeRemainingSeconds.value * 1000L))
+        }
+
+        val elapsedSecs = (elapsedMs / 1000L).toInt()
 
         _timerJobCancel()
+        ambientSoundManager.stop()
         _timerStatus.value = TimerStatus.COMPLETED
 
-        if (elapsed >= 10) { // Only log meaningful sessions >= 10s
+        if (elapsedSecs >= 10) { // Log meaningful sessions
             viewModelScope.launch {
-                val endTime = System.currentTimeMillis()
-                val startTime = if (sessionStartTime > 0) sessionStartTime else (endTime - elapsed * 1000L)
+                val start = if (startTimeMs > 0) startTimeMs else (now - elapsedMs)
                 val id = repository.logStudySession(
                     subjectId = _timerSubjectId.value,
                     chapterId = null,
                     taskId = null,
-                    startedAt = startTime,
-                    endedAt = endTime,
-                    elapsedSeconds = elapsed,
+                    startedAt = start,
+                    endedAt = now,
+                    elapsedSeconds = elapsedSecs,
                     status = "COMPLETED",
                     sessionType = _selectedSessionType.value
                 )
                 lastRecordedSessionId = id
 
+                val updatedGamification = repository.awardFocusSession(
+                    elapsedSeconds = elapsedSecs,
+                    isCompleted = completedNormally
+                )
+                onGamificationUpdated(updatedGamification)
+
                 // Notify completion
-                val mins = elapsed / 60
+                val mins = elapsedSecs / 60
                 val subjectName = subjects.value.find { it.id == _timerSubjectId.value }?.name ?: "Study"
-                val title = "Focus Session Finished!"
-                val msg = "Great job! You focused on $subjectName for $mins minutes."
+                val title = "Focus Session Completed!"
+                val msg = "Awesome! You focused on $subjectName for $mins minutes and earned XP!"
 
                 repository.postNotification(
                     title = title,
@@ -255,6 +459,12 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         timerJob?.cancel()
         timerJob = null
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        ambientSoundManager.stop()
+    }
+
 
     // Onboarding and User Profile
     fun saveOnboardingProfile(

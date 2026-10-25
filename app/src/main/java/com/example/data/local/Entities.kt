@@ -127,3 +127,30 @@ data class AppSettingsEntity(
     val lastNotificationTime: Long = 0L,
     val consecutiveIgnoredCount: Int = 0
 )
+
+@Entity(tableName = "focus_presets")
+data class FocusPresetEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    val title: String,
+    val mode: String, // "POMODORO", "DEEP_FOCUS", "SIMPLE_TIMER", "STOPWATCH"
+    val workMinutes: Int,
+    val shortBreakMinutes: Int = 5,
+    val longBreakMinutes: Int = 15,
+    val targetCycles: Int = 4,
+    val isStrict: Boolean = false,
+    val isDefault: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "focus_gamification")
+data class FocusGamificationEntity(
+    @PrimaryKey val id: Long = 1L,
+    val totalXp: Int = 0,
+    val currentStreakDays: Int = 0,
+    val longestStreakDays: Int = 0,
+    val lastFocusDateStr: String = "",
+    val totalSessionsCompleted: Int = 0,
+    val totalFocusMinutes: Int = 0,
+    val unlockedAchievementIds: String = "" // comma-separated e.g. "first_session,streak_3"
+)
+

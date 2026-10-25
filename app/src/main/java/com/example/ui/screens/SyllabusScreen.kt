@@ -96,6 +96,11 @@ fun SyllabusScreen(
     var showAddSheet by remember { mutableStateOf(initialAddSubjectRequested) }
     var selectedSubjectDetail by remember { mutableStateOf<SubjectEntity?>(null) }
 
+    androidx.activity.compose.BackHandler(enabled = showAddSheet) {
+        showAddSheet = false
+        onAddSubjectDismissed()
+    }
+
     LaunchedEffect(selectedSubjectDetail) {
         onSubjectDetailStateChanged(selectedSubjectDetail != null)
     }

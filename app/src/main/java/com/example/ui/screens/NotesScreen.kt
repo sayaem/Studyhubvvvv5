@@ -86,6 +86,10 @@ fun NotesScreen(
     var showEditorSheet by remember { mutableStateOf(false) }
     var editingNote by remember { mutableStateOf<StudyNoteEntity?>(null) }
 
+    androidx.activity.compose.BackHandler(enabled = showEditorSheet) {
+        showEditorSheet = false
+    }
+
     val filtered = notes.filter { note ->
         val sub = subjects.find { it.id == note.subjectId }
         val matchesSubject = selectedSubjectFilter == "All" || sub?.name == selectedSubjectFilter

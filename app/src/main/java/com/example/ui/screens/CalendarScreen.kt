@@ -91,6 +91,10 @@ fun CalendarScreen(
     var selectedFilter by remember { mutableStateOf("All") } // "All", "Deadlines", "Exams", "Events"
     var showAddTaskDialog by remember { mutableStateOf(false) }
 
+    androidx.activity.compose.BackHandler(enabled = showAddTaskDialog) {
+        showAddTaskDialog = false
+    }
+
     val monthFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val dayFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 

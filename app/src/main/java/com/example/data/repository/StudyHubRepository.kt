@@ -4,6 +4,8 @@ import com.example.data.local.AdmissionTargetEntity
 import com.example.data.local.AppDatabase
 import com.example.data.local.AppSettingsEntity
 import com.example.data.local.ChapterEntity
+import com.example.data.local.FocusGamificationEntity
+import com.example.data.local.FocusPresetEntity
 import com.example.data.local.NotificationItemEntity
 import com.example.data.local.StudyNoteEntity
 import com.example.data.local.StudySessionEntity
@@ -226,4 +228,100 @@ class StudyHubRepository(private val db: AppDatabase) {
     suspend fun resetAllData() {
         db.clearAllTables()
     }
+
+    // Focus Presets
+    val allFocusPresets: Flow<List<FocusPresetEntity>> = db.focusPresetDao().getAllPresets()
+
+    suspend fun seedDefaultFocusPresetsIfEmpty() {
+        val dao = db.focusPresetDao()
+        val defaultPresets = listOf(
+            FocusPresetEntity(title = "Standard Pomodoro", mode = "POMODORO", workMinutes = 25, shortBreakMinutes = 5, longBreakMinutes = 15, targetCycles = 4, isDefault = true),
+            FocusPresetEntity(title = "Deep Focus Block", mode = "DEEP_FOCUS", workMinutes = 50, shortBreakMinutes = 10, longBreakMinutes = 20, targetCycles = 2, isStrict = true, isDefault = true),
+            FocusPresetEntity(title = "Quick Review", mode = "SIMPLE_TIMER", workMinutes = 15, shortBreakMinutes = 3, longBreakMinutes = 10, targetCycles = 1, isDefault = true),
+            FocusPresetEntity(title = "Exam Sprint", mode = "DEEP_FOCUS", workMinutes = 90, shortBreakMinutes = 15, longBreakMinutes = 30, targetCycles = 1, isStrict = true, isDefault = true)
+        )
+        dao.insertPresets(defaultPresets)
+    }
+
+    suspend fun saveFocusPreset(preset: FocusPresetEntity): Long {
+        return if (preset.id == 0L) {
+            db.focusPresetDao().insertPreset(preset)
+        } else {
+            db.focusPresetDao().updatePreset(preset)
+            preset.id
+        }
+    }
+
+    suspend fun deleteFocusPreset(preset: FocusPresetEntity) {
+        db.focusPresetDao().deletePreset(preset)
+    }
+
+    // Gamification & Streaks
+    val focusGamification: Flow<FocusGamificationEntity?> = db.focusGamificationDao().getGamification()
+
+    suspend fun awardFocusSession(elapsedSeconds: Int, isCompleted: Boolean): FocusGamificationEntity {
+        val dao = db.focusGamificationDao()
+        val current = dao.getGamificationSync() ?: FocusGamificationEntity()
+
+        val mins = elapsedSeconds / 60
+        if (mins <= 0) return current
+
+        // XP formula: 10 XP per minute + 50 XP completion bonus
+        val baseMultiplier = 10
+        val bonusXp = if (isCompleted) 50 else 0
+        val earnedXp = (mins * baseMultiplier) + bonusXp
+
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        var newCurrentStreak = current.currentStreakDays
+        var newLongestStreak = current.longestStreakDays
+
+        if (current.lastFocusDateStr != todayStr) {
+            val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+            val lastDate = if (current.lastFocusDateStr.isNotBlank()) {
+                try { sdf.parse(current.lastFocusDateStr) } catch (e: Exception) { null }
+            } else null
+
+            val todayDate = sdf.parse(todayStr)
+            val diffDays = if (lastDate != null && todayDate != null) {
+                ((todayDate.time - lastDate.time) / (1000 * 60 * 60 * 24)).toInt()
+            } else -1
+
+            if (diffDays == 1) {
+                newCurrentStreak += 1
+            } else if (diffDays > 1 || diffDays < 0) {
+                newCurrentStreak = 1
+            }
+
+            if (newCurrentStreak > newLongestStreak) {
+                newLongestStreak = newCurrentStreak
+            }
+        }
+
+        val totalMins = current.totalFocusMinutes + mins
+        val totalSessions = current.totalSessionsCompleted + 1
+
+        val unlockedList = current.unlockedAchievementIds.split(",").filter { it.isNotBlank() }.toMutableSet()
+
+        if (totalSessions >= 1) unlockedList.add("first_session")
+        if (newCurrentStreak >= 3) unlockedList.add("streak_3")
+        if (newCurrentStreak >= 7) unlockedList.add("streak_7")
+        if (totalMins >= 100) unlockedList.add("focus_100")
+        if (totalMins >= 500) unlockedList.add("focus_500")
+        if (totalMins >= 1000) unlockedList.add("centurion")
+        if (mins >= 60) unlockedList.add("deep_diver")
+
+        val updated = current.copy(
+            totalXp = current.totalXp + earnedXp,
+            currentStreakDays = newCurrentStreak,
+            longestStreakDays = newLongestStreak,
+            lastFocusDateStr = todayStr,
+            totalSessionsCompleted = totalSessions,
+            totalFocusMinutes = totalMins,
+            unlockedAchievementIds = unlockedList.joinToString(",")
+        )
+
+        dao.upsertGamification(updated)
+        return updated
+    }
 }
+

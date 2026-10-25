@@ -75,6 +75,10 @@ fun SettingsScreen(
     val settings = appSettings ?: AppSettingsEntity()
     var showResetDataDialog by remember { mutableStateOf(false) }
 
+    androidx.activity.compose.BackHandler(enabled = showResetDataDialog) {
+        showResetDataDialog = false
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

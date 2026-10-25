@@ -170,3 +170,34 @@ interface SettingsDao {
     @Upsert
     suspend fun upsertSettings(settings: AppSettingsEntity)
 }
+
+@Dao
+interface FocusPresetDao {
+    @Query("SELECT * FROM focus_presets ORDER BY isDefault DESC, id ASC")
+    fun getAllPresets(): Flow<List<FocusPresetEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPreset(preset: FocusPresetEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPresets(presets: List<FocusPresetEntity>)
+
+    @Update
+    suspend fun updatePreset(preset: FocusPresetEntity)
+
+    @Delete
+    suspend fun deletePreset(preset: FocusPresetEntity)
+}
+
+@Dao
+interface FocusGamificationDao {
+    @Query("SELECT * FROM focus_gamification WHERE id = 1 LIMIT 1")
+    fun getGamification(): Flow<FocusGamificationEntity?>
+
+    @Query("SELECT * FROM focus_gamification WHERE id = 1 LIMIT 1")
+    suspend fun getGamificationSync(): FocusGamificationEntity?
+
+    @Upsert
+    suspend fun upsertGamification(item: FocusGamificationEntity)
+}
+

@@ -15,7 +15,9 @@ import androidx.room.RoomDatabase
         AdmissionTargetEntity::class,
         StudyNoteEntity::class,
         NotificationItemEntity::class,
-        AppSettingsEntity::class
+        AppSettingsEntity::class,
+        FocusPresetEntity::class,
+        FocusGamificationEntity::class
     ],
     version = 1,
     exportSchema = false
@@ -30,6 +32,9 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): StudyNoteDao
     abstract fun notificationDao(): NotificationDao
     abstract fun settingsDao(): SettingsDao
+    abstract fun focusPresetDao(): FocusPresetDao
+    abstract fun focusGamificationDao(): FocusGamificationDao
+
 
     companion object {
         @Volatile

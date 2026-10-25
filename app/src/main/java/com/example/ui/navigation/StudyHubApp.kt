@@ -65,6 +65,18 @@ enum class AppScreen {
     SETTINGS
 }
 
+sealed class NavigationDestination {
+    data class MainTab(val destination: NavDestination) : NavigationDestination()
+    object Profile : NavigationDestination()
+    object Notifications : NavigationDestination()
+    object AdmissionCalendar : NavigationDestination()
+    object ProgressAnalytics : NavigationDestination()
+    object Notes : NavigationDestination()
+    object Settings : NavigationDestination()
+    object Onboarding : NavigationDestination()
+    object Splash : NavigationDestination()
+}
+
 @Composable
 fun StudyHubApp(
     viewModel: StudyHubViewModel,
@@ -86,55 +98,81 @@ fun StudyHubApp(
 
     // Timer state
     val timerStatus by viewModel.timerStatus.collectAsStateWithLifecycle()
+    val timerMode by viewModel.timerMode.collectAsStateWithLifecycle()
+    val pomodoroPhase by viewModel.pomodoroPhase.collectAsStateWithLifecycle()
+    val currentCycle by viewModel.currentCycle.collectAsStateWithLifecycle()
+    val targetCycles by viewModel.targetCycles.collectAsStateWithLifecycle()
     val timeRemainingSeconds by viewModel.timeRemainingSeconds.collectAsStateWithLifecycle()
     val totalDurationSeconds by viewModel.totalDurationSeconds.collectAsStateWithLifecycle()
     val selectedSessionType by viewModel.selectedSessionType.collectAsStateWithLifecycle()
     val timerSubjectId by viewModel.timerSubjectId.collectAsStateWithLifecycle()
+    val selectedGoalTask by viewModel.selectedGoalTask.collectAsStateWithLifecycle()
+    val isStrictFocus by viewModel.isStrictFocus.collectAsStateWithLifecycle()
+    val ambientSoundType by viewModel.ambientSoundType.collectAsStateWithLifecycle()
+    val ambientVolume by viewModel.ambientVolume.collectAsStateWithLifecycle()
+    val focusPresets by viewModel.focusPresets.collectAsStateWithLifecycle()
+    val focusGamification by viewModel.focusGamification.collectAsStateWithLifecycle()
 
-    var currentScreen by remember { mutableStateOf(AppScreen.SPLASH) }
-    var currentNavDestination by remember { mutableStateOf(NavDestination.HOME) }
+
+    val backStack = remember { androidx.compose.runtime.mutableStateListOf<NavigationDestination>(NavigationDestination.Splash) }
+
+    fun navigateTo(dest: NavigationDestination) {
+        val currentTop = backStack.lastOrNull()
+        if (currentTop == dest) return
+
+        if (dest is NavigationDestination.MainTab) {
+            // When navigating between main bottom tabs, maintain tab history with HOME as root
+            if (currentTop is NavigationDestination.MainTab) {
+                if (dest.destination == NavDestination.HOME) {
+                    // Return to root HOME tab
+                    while (backStack.size > 1 && backStack.last() !is NavigationDestination.MainTab) {
+                        backStack.removeAt(backStack.size - 1)
+                    }
+                    if (backStack.lastOrNull() != NavigationDestination.MainTab(NavDestination.HOME)) {
+                        backStack.removeAt(backStack.size - 1)
+                        backStack.add(NavigationDestination.MainTab(NavDestination.HOME))
+                    }
+                } else {
+                    // Switch tab
+                    if (backStack.contains(dest)) {
+                        backStack.remove(dest)
+                    }
+                    backStack.add(dest)
+                }
+            } else {
+                // Secondary screen -> Main tab: push tab destination
+                if (backStack.contains(dest)) {
+                    backStack.remove(dest)
+                }
+                backStack.add(dest)
+            }
+        } else {
+            // Push secondary screen onto stack
+            if (backStack.lastOrNull() == dest) return
+            backStack.add(dest)
+        }
+    }
+
+    fun goBack() {
+        if (backStack.size > 1) {
+            backStack.removeAt(backStack.size - 1)
+        }
+    }
 
     fun navigateToRoute(route: String?) {
         if (route.isNullOrBlank()) return
         when (route.lowercase(Locale.ROOT)) {
-            "focus" -> {
-                currentScreen = AppScreen.MAIN
-                currentNavDestination = NavDestination.FOCUS
-            }
-            "syllabus" -> {
-                currentScreen = AppScreen.MAIN
-                currentNavDestination = NavDestination.SYLLABUS
-            }
-            "calendar" -> {
-                currentScreen = AppScreen.MAIN
-                currentNavDestination = NavDestination.CALENDAR
-            }
-            "admission" -> {
-                currentScreen = AppScreen.ADMISSION_CALENDAR
-            }
-            "notes" -> {
-                currentScreen = AppScreen.NOTES
-            }
-            "tools" -> {
-                currentScreen = AppScreen.MAIN
-                currentNavDestination = NavDestination.TOOLS
-            }
-            "notifications" -> {
-                currentScreen = AppScreen.NOTIFICATIONS
-            }
-            "profile" -> {
-                currentScreen = AppScreen.PROFILE
-            }
-            "analytics" -> {
-                currentScreen = AppScreen.PROGRESS_ANALYTICS
-            }
-            "settings" -> {
-                currentScreen = AppScreen.SETTINGS
-            }
-            else -> {
-                currentScreen = AppScreen.MAIN
-                currentNavDestination = NavDestination.HOME
-            }
+            "focus" -> navigateTo(NavigationDestination.MainTab(NavDestination.FOCUS))
+            "syllabus" -> navigateTo(NavigationDestination.MainTab(NavDestination.SYLLABUS))
+            "calendar" -> navigateTo(NavigationDestination.MainTab(NavDestination.CALENDAR))
+            "admission" -> navigateTo(NavigationDestination.AdmissionCalendar)
+            "notes" -> navigateTo(NavigationDestination.Notes)
+            "tools" -> navigateTo(NavigationDestination.MainTab(NavDestination.TOOLS))
+            "notifications" -> navigateTo(NavigationDestination.Notifications)
+            "profile" -> navigateTo(NavigationDestination.Profile)
+            "analytics" -> navigateTo(NavigationDestination.ProgressAnalytics)
+            "settings" -> navigateTo(NavigationDestination.Settings)
+            else -> navigateTo(NavigationDestination.MainTab(NavDestination.HOME))
         }
     }
 
@@ -179,8 +217,40 @@ fun StudyHubApp(
 
     var isSubjectDetailOpen by remember { mutableStateOf(false) }
 
+    val currentDestination = backStack.lastOrNull() ?: NavigationDestination.MainTab(NavDestination.HOME)
+
+    val currentScreen = when (currentDestination) {
+        is NavigationDestination.Splash -> AppScreen.SPLASH
+        is NavigationDestination.Onboarding -> AppScreen.ONBOARDING
+        is NavigationDestination.MainTab -> AppScreen.MAIN
+        is NavigationDestination.Profile -> AppScreen.PROFILE
+        is NavigationDestination.Notifications -> AppScreen.NOTIFICATIONS
+        is NavigationDestination.AdmissionCalendar -> AppScreen.ADMISSION_CALENDAR
+        is NavigationDestination.ProgressAnalytics -> AppScreen.PROGRESS_ANALYTICS
+        is NavigationDestination.Notes -> AppScreen.NOTES
+        is NavigationDestination.Settings -> AppScreen.SETTINGS
+    }
+
+    val currentNavDestination = when (currentDestination) {
+        is NavigationDestination.MainTab -> currentDestination.destination
+        else -> {
+            (backStack.findLast { it is NavigationDestination.MainTab } as? NavigationDestination.MainTab)?.destination ?: NavDestination.HOME
+        }
+    }
+
     LaunchedEffect(currentNavDestination) {
         isSubjectDetailOpen = false
+    }
+
+    // System Back Handler for app navigation stack
+    BackHandler(enabled = backStack.size > 1 && !showNotificationRationaleDialog) {
+        goBack()
+    }
+
+    if (showNotificationRationaleDialog) {
+        BackHandler {
+            showNotificationRationaleDialog = false
+        }
     }
 
     StudyHubTheme(themeMode = currentThemeMode) {
@@ -191,10 +261,11 @@ fun StudyHubApp(
                     SplashScreen(
                         isReady = isProfileLoaded,
                         onSplashFinished = {
+                            backStack.clear()
                             if (userProfile?.isOnboardingCompleted == true) {
-                                currentScreen = AppScreen.MAIN
+                                backStack.add(NavigationDestination.MainTab(NavDestination.HOME))
                             } else {
-                                currentScreen = AppScreen.ONBOARDING
+                                backStack.add(NavigationDestination.Onboarding)
                             }
                         }
                     )
@@ -213,9 +284,8 @@ fun StudyHubApp(
                                 dailyGoalHours = goalH,
                                 preferredTime = time,
                                 onSuccess = {
-                                    currentScreen = AppScreen.MAIN
-                                    currentNavDestination = NavDestination.HOME
-                                    // Check notification permission nicely
+                                    backStack.clear()
+                                    backStack.add(NavigationDestination.MainTab(NavDestination.HOME))
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                         !viewModel.notificationManager.hasNotificationPermission()
                                     ) {
@@ -233,7 +303,7 @@ fun StudyHubApp(
                             if (!isSubjectDetailOpen || currentNavDestination != NavDestination.SYLLABUS) {
                                 StudyHubTopBar(
                                     unreadNotificationCount = unreadNotificationsCount,
-                                    onNotificationClick = { currentScreen = AppScreen.NOTIFICATIONS }
+                                    onNotificationClick = { navigateTo(NavigationDestination.Notifications) }
                                 )
                             }
                         },
@@ -241,7 +311,7 @@ fun StudyHubApp(
                             StudyHubBottomNav(
                                 currentDestination = currentNavDestination,
                                 onNavigate = { destination ->
-                                    currentNavDestination = destination
+                                    navigateTo(NavigationDestination.MainTab(destination))
                                 }
                             )
                         }
@@ -263,26 +333,26 @@ fun StudyHubApp(
                                         admissionTargets = admissionTargets,
                                         onAddSubjectClick = {
                                             requestAddSubjectOnSyllabus = true
-                                            currentNavDestination = NavDestination.SYLLABUS
+                                            navigateTo(NavigationDestination.MainTab(NavDestination.SYLLABUS))
                                         },
                                         onStartFocusClick = {
-                                            currentNavDestination = NavDestination.FOCUS
+                                            navigateTo(NavigationDestination.MainTab(NavDestination.FOCUS))
                                         },
                                         onTodayPlanClick = {
-                                            currentNavDestination = NavDestination.CALENDAR
+                                            navigateTo(NavigationDestination.MainTab(NavDestination.CALENDAR))
                                         },
                                         onAddAdmissionClick = {
                                             requestAddAdmissionOnCalendar = true
-                                            currentScreen = AppScreen.ADMISSION_CALENDAR
+                                            navigateTo(NavigationDestination.AdmissionCalendar)
                                         },
                                         onOpenAdmissionCalendar = {
-                                            currentScreen = AppScreen.ADMISSION_CALENDAR
+                                            navigateTo(NavigationDestination.AdmissionCalendar)
                                         },
                                         onSubjectClick = {
-                                            currentNavDestination = NavDestination.SYLLABUS
+                                            navigateTo(NavigationDestination.MainTab(NavDestination.SYLLABUS))
                                         },
                                         onAvatarClick = {
-                                            currentScreen = AppScreen.PROFILE
+                                            navigateTo(NavigationDestination.Profile)
                                         }
                                     )
                                 }
@@ -313,25 +383,46 @@ fun StudyHubApp(
                                 NavDestination.FOCUS -> {
                                     FocusTimerScreen(
                                         timerStatus = timerStatus,
+                                        timerMode = timerMode,
+                                        pomodoroPhase = pomodoroPhase,
+                                        currentCycle = currentCycle,
+                                        targetCycles = targetCycles,
                                         timeRemainingSeconds = timeRemainingSeconds,
                                         totalDurationSeconds = totalDurationSeconds,
                                         selectedSessionType = selectedSessionType,
                                         selectedSubjectId = timerSubjectId,
+                                        selectedGoalTask = selectedGoalTask,
+                                        isStrictFocus = isStrictFocus,
+                                        ambientSoundType = ambientSoundType,
+                                        ambientVolume = ambientVolume,
                                         subjects = subjects,
+                                        chapters = chapters,
                                         sessions = sessions,
-                                        onSelectDuration = { mins, type ->
-                                            viewModel.selectTimerDuration(mins, type)
+                                        presets = focusPresets,
+                                        gamification = focusGamification,
+                                        dailyGoalMinutes = userProfile?.dailyGoalMinutes ?: 240,
+                                        onSelectMode = { viewModel.setTimerMode(it) },
+                                        onApplyPreset = { viewModel.applyPreset(it) },
+                                        onSaveCustomPreset = { title, mode, workMins, shortMins, longMins, cycles, isStrict ->
+                                            viewModel.saveCustomPreset(title, mode, workMins, shortMins, longMins, cycles, isStrict)
                                         },
-                                        onSelectSubject = { subId ->
-                                            viewModel.setTimerSubject(subId)
-                                        },
+                                        onDeletePreset = { viewModel.deleteFocusPreset(it) },
+                                        onSelectSubject = { viewModel.setTimerSubject(it) },
+                                        onSetGoalTask = { viewModel.setGoalTask(it) },
+                                        onToggleStrict = { viewModel.toggleStrictFocus(it) },
+                                        onSetAmbientSound = { viewModel.setAmbientSound(it) },
+                                        onSetAmbientVolume = { viewModel.setAmbientVolume(it) },
                                         onStartTimer = { viewModel.startTimer() },
                                         onPauseTimer = { viewModel.pauseTimer() },
                                         onResumeTimer = { viewModel.resumeTimer() },
                                         onResetTimer = { viewModel.resetTimer() },
-                                        onFinishTimer = { viewModel.finishTimer() }
+                                        onSkipPhase = { viewModel.skipPhase() },
+                                        onFinishTimer = { completed, rating, notesText, dist ->
+                                            viewModel.finishTimer(completed, rating, notesText, dist)
+                                        }
                                     )
                                 }
+
 
                                 NavDestination.CALENDAR -> {
                                     CalendarScreen(
@@ -348,9 +439,9 @@ fun StudyHubApp(
 
                                 NavDestination.TOOLS -> {
                                     ToolsScreen(
-                                        onOpenAdmissionCalendar = { currentScreen = AppScreen.ADMISSION_CALENDAR },
-                                        onOpenAnalytics = { currentScreen = AppScreen.PROGRESS_ANALYTICS },
-                                        onOpenNotes = { currentScreen = AppScreen.NOTES }
+                                        onOpenAdmissionCalendar = { navigateTo(NavigationDestination.AdmissionCalendar) },
+                                        onOpenAnalytics = { navigateTo(NavigationDestination.ProgressAnalytics) },
+                                        onOpenNotes = { navigateTo(NavigationDestination.Notes) }
                                     )
                                 }
                             }
@@ -359,18 +450,16 @@ fun StudyHubApp(
                 }
 
                 AppScreen.NOTIFICATIONS -> {
-                    BackHandler { currentScreen = AppScreen.MAIN }
                     NotificationsScreen(
                         notifications = notifications,
                         onMarkAllRead = { viewModel.markAllNotificationsAsRead() },
                         onDeleteNotification = { viewModel.deleteNotification(it) },
                         onNavigateRoute = { route -> navigateToRoute(route) },
-                        onBack = { currentScreen = AppScreen.MAIN }
+                        onBack = { goBack() }
                     )
                 }
 
                 AppScreen.ADMISSION_CALENDAR -> {
-                    BackHandler { currentScreen = AppScreen.MAIN }
                     AdmissionCalendarScreen(
                         targets = admissionTargets,
                         tasks = tasks,
@@ -381,73 +470,70 @@ fun StudyHubApp(
                         },
                         onToggleTaskStatus = { viewModel.toggleTaskStatus(it) },
                         onDeleteTask = { viewModel.deleteTask(it) },
-                        onBack = { currentScreen = AppScreen.MAIN },
+                        onBack = { goBack() },
                         initialAddRequested = requestAddAdmissionOnCalendar,
                         onAddDismissed = { requestAddAdmissionOnCalendar = false }
                     )
                 }
 
                 AppScreen.PROGRESS_ANALYTICS -> {
-                    BackHandler { currentScreen = AppScreen.MAIN }
                     ProgressAnalyticsScreen(
                         userProfile = userProfile,
                         sessions = sessions,
                         subjects = subjects,
                         chapters = chapters,
-                        onBack = { currentScreen = AppScreen.MAIN },
+                        onBack = { goBack() },
                         onStartFocus = {
-                            currentScreen = AppScreen.MAIN
-                            currentNavDestination = NavDestination.FOCUS
+                            navigateTo(NavigationDestination.MainTab(NavDestination.FOCUS))
                         }
                     )
                 }
 
                 AppScreen.PROFILE -> {
-                    BackHandler { currentScreen = AppScreen.MAIN }
                     ProfileScreen(
                         userProfile = userProfile,
                         completedChaptersCount = completedChaptersCount,
                         totalStudyHours = totalHoursFocused,
-                        onOpenSettings = { currentScreen = AppScreen.SETTINGS },
-                        onOpenAdmissionCalendar = { currentScreen = AppScreen.ADMISSION_CALENDAR },
-                        onOpenAnalytics = { currentScreen = AppScreen.PROGRESS_ANALYTICS },
-                        onOpenNotes = { currentScreen = AppScreen.NOTES },
-                        onEditProfile = { currentScreen = AppScreen.ONBOARDING },
-                        onBack = { currentScreen = AppScreen.MAIN }
+                        onOpenSettings = { navigateTo(NavigationDestination.Settings) },
+                        onOpenAdmissionCalendar = { navigateTo(NavigationDestination.AdmissionCalendar) },
+                        onOpenAnalytics = { navigateTo(NavigationDestination.ProgressAnalytics) },
+                        onOpenNotes = { navigateTo(NavigationDestination.Notes) },
+                        onEditProfile = { navigateTo(NavigationDestination.Onboarding) },
+                        onBack = { goBack() }
                     )
                 }
 
                 AppScreen.NOTES -> {
-                    BackHandler { currentScreen = AppScreen.MAIN }
                     NotesScreen(
                         notes = notes,
                         subjects = subjects,
                         onSaveNote = { viewModel.saveNote(it) {} },
                         onDeleteNote = { viewModel.deleteNote(it) },
-                        onBack = { currentScreen = AppScreen.MAIN }
+                        onBack = { goBack() }
                     )
                 }
 
                 AppScreen.SETTINGS -> {
-                    BackHandler { currentScreen = AppScreen.MAIN }
                     SettingsScreen(
                         appSettings = appSettings,
                         currentThemeMode = currentThemeMode,
                         onThemeModeChanged = { viewModel.updateThemeMode(it) },
                         onSettingsUpdated = { viewModel.updateSettings(it) },
-                        onOpenNotifications = { currentScreen = AppScreen.NOTIFICATIONS },
+                        onOpenNotifications = { navigateTo(NavigationDestination.Notifications) },
                         onMasterToggleChanged = { viewModel.updateMasterNotificationToggle(it) },
                         onResetOnboarding = {
-                            currentScreen = AppScreen.ONBOARDING
+                            navigateTo(NavigationDestination.Onboarding)
                         },
                         onResetAllData = {
                             viewModel.resetAllData {
-                                currentScreen = AppScreen.ONBOARDING
+                                backStack.clear()
+                                backStack.add(NavigationDestination.Onboarding)
                             }
                         },
-                        onBack = { currentScreen = AppScreen.MAIN }
+                        onBack = { goBack() }
                     )
                 }
+            }
             }
 
             InAppNotificationBanner(
@@ -484,7 +570,6 @@ fun StudyHubApp(
                     }
                 }
             )
-        }
         }
     }
 }

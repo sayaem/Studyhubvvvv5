@@ -184,6 +184,24 @@ fun AdmissionCalendarScreen(
     var targetToDelete by remember { mutableStateOf<AdmissionTargetEntity?>(null) }
     var showAddTaskModalForTarget by remember { mutableStateOf<AdmissionTargetEntity?>(null) }
 
+    androidx.activity.compose.BackHandler(enabled = targetToDelete != null) {
+        targetToDelete = null
+    }
+
+    androidx.activity.compose.BackHandler(enabled = showAddTaskModalForTarget != null) {
+        showAddTaskModalForTarget = null
+    }
+
+    androidx.activity.compose.BackHandler(enabled = showAddSheet) {
+        showAddSheet = false
+        targetToEdit = null
+        onAddDismissed()
+    }
+
+    androidx.activity.compose.BackHandler(enabled = selectedTargetDetail != null) {
+        selectedTargetDetail = null
+    }
+
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
     val todayDate = remember {

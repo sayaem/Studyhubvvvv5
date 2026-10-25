@@ -119,9 +119,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     private val _timerSubjectId = MutableStateFlow<Long?>(null)
     val timerSubjectId: StateFlow<Long?> = _timerSubjectId.asStateFlow()
 
-    private val _timerChapterId = MutableStateFlow<Long?>(null)
-    val timerChapterId: StateFlow<Long?> = _timerChapterId.asStateFlow()
-
     private val _selectedGoalTask = MutableStateFlow<String?>(null)
     val selectedGoalTask: StateFlow<String?> = _selectedGoalTask.asStateFlow()
 
@@ -141,55 +138,10 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
 
     private var timerJob: Job? = null
     private var lastRecordedSessionId: Long? = null
-    private var isTimerRestored = false
 
     init {
         viewModelScope.launch {
             repository.seedDefaultFocusPresetsIfEmpty()
-        }
-        viewModelScope.launch {
-            repository.appSettings.collect { settings ->
-                if (settings != null && !isTimerRestored) {
-                    isTimerRestored = true
-                    _timerStatus.value = try { TimerStatus.valueOf(settings.timerStatus) } catch (e: Exception) { TimerStatus.IDLE }
-                    _timerMode.value = settings.timerMode
-                    _pomodoroPhase.value = settings.pomodoroPhase
-                    _currentCycle.value = settings.currentCycle
-                    _targetCycles.value = settings.targetCycles
-                    _totalDurationSeconds.value = settings.totalDurationSeconds
-                    _isStrictFocus.value = settings.isStrictFocus
-                    _timerSubjectId.value = settings.timerSubjectId
-                    _timerChapterId.value = settings.timerChapterId
-                    _selectedGoalTask.value = settings.selectedGoalTask
-
-                    startTimeMs = settings.startTimeMs
-                    targetDurationMs = settings.targetDurationMs
-                    accumulatedPauseMs = settings.accumulatedPauseMs
-                    lastPauseMs = settings.lastPauseMs
-
-                    if (_timerStatus.value == TimerStatus.RUNNING) {
-                        val now = System.currentTimeMillis()
-                        val elapsedMs = maxOf(0L, now - startTimeMs - accumulatedPauseMs)
-                        if (_timerMode.value == "STOPWATCH") {
-                            _timeRemainingSeconds.value = (elapsedMs / 1000L).toInt()
-                            startTimerInternal()
-                        } else {
-                            val remainMs = maxOf(0L, targetDurationMs - elapsedMs)
-                            val remainSecs = (remainMs / 1000L).toInt()
-                            if (remainMs <= 0) {
-                                finishTimer(completedNormally = true)
-                            } else {
-                                _timeRemainingSeconds.value = remainSecs
-                                startTimerInternal()
-                            }
-                        }
-                    } else if (_timerStatus.value == TimerStatus.PAUSED) {
-                        _timeRemainingSeconds.value = settings.timeRemainingSeconds
-                    } else {
-                        _timeRemainingSeconds.value = settings.timeRemainingSeconds.takeIf { it > 0 } ?: settings.totalDurationSeconds
-                    }
-                }
-            }
         }
     }
 
@@ -244,38 +196,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-
-
-    fun setTimerChapter(chapterId: Long?) {
-        _timerChapterId.value = chapterId
-        saveTimerStateToDb()
-    }
-
-    private fun saveTimerStateToDb() {
-        viewModelScope.launch {
-            val current = repository.getAppSettingsSync() ?: AppSettingsEntity()
-            repository.saveAppSettings(
-                current.copy(
-                    timerStatus = _timerStatus.value.name,
-                    timerMode = _timerMode.value,
-                    pomodoroPhase = _pomodoroPhase.value,
-                    currentCycle = _currentCycle.value,
-                    targetCycles = _targetCycles.value,
-                    totalDurationSeconds = _totalDurationSeconds.value,
-                    timeRemainingSeconds = _timeRemainingSeconds.value,
-                    startTimeMs = startTimeMs,
-                    targetDurationMs = targetDurationMs,
-                    accumulatedPauseMs = accumulatedPauseMs,
-                    lastPauseMs = lastPauseMs,
-                    isStrictFocus = _isStrictFocus.value,
-                    timerSubjectId = _timerSubjectId.value,
-                    timerChapterId = _timerChapterId.value,
-                    selectedGoalTask = _selectedGoalTask.value
-                )
-            )
-        }
-    }
-
     // Timer Actions
     fun setTimerMode(mode: String) {
         if (_timerStatus.value == TimerStatus.RUNNING) return
@@ -300,7 +220,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
                 _timerStatus.value = TimerStatus.IDLE
             }
         }
-        saveTimerStateToDb()
     }
 
     fun applyPreset(preset: com.example.data.local.FocusPresetEntity) {
@@ -311,7 +230,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         _currentCycle.value = 1
         _pomodoroPhase.value = "WORK"
         selectTimerDuration(preset.workMinutes, if (preset.mode == "POMODORO") "POMODORO_FOCUS" else "CUSTOM")
-        saveTimerStateToDb()
     }
 
     fun saveCustomPreset(
@@ -347,7 +265,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
 
     fun setGoalTask(goal: String?) {
         _selectedGoalTask.value = goal
-        saveTimerStateToDb()
     }
 
     fun selectTimerDuration(minutes: Int, sessionType: String) {
@@ -359,18 +276,14 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         targetDurationMs = secs * 1000L
         _selectedSessionType.value = sessionType
         _timerStatus.value = TimerStatus.IDLE
-        saveTimerStateToDb()
     }
 
     fun setTimerSubject(subjectId: Long?) {
         _timerSubjectId.value = subjectId
-        _timerChapterId.value = null // reset chapter when subject changes
-        saveTimerStateToDb()
     }
 
     fun toggleStrictFocus(enabled: Boolean) {
         _isStrictFocus.value = enabled
-        saveTimerStateToDb()
     }
 
     fun setAmbientSound(soundType: String) {
@@ -385,7 +298,7 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
 
     fun startTimer() {
         val now = System.currentTimeMillis()
-        if (_timerStatus.value == TimerStatus.IDLE || _timerStatus.value == TimerStatus.COMPLETED) {
+        if (_timerStatus.value == TimerStatus.IDLE) {
             startTimeMs = now
             accumulatedPauseMs = 0L
         } else if (_timerStatus.value == TimerStatus.PAUSED) {
@@ -393,11 +306,7 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         }
 
         _timerStatus.value = TimerStatus.RUNNING
-        startTimerInternal()
-        saveTimerStateToDb()
-    }
 
-    private fun startTimerInternal() {
         if (_ambientSoundType.value != "OFF") {
             ambientSoundManager.setSound(_ambientSoundType.value)
         }
@@ -435,7 +344,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
             lastPauseMs = System.currentTimeMillis()
             _timerJobCancel()
             ambientSoundManager.stop()
-            saveTimerStateToDb()
         }
     }
 
@@ -454,7 +362,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
             _timeRemainingSeconds.value = _totalDurationSeconds.value
         }
         _timerStatus.value = TimerStatus.IDLE
-        saveTimerStateToDb()
     }
 
     fun skipPhase() {
@@ -482,7 +389,6 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         } else {
             resetTimer()
         }
-        saveTimerStateToDb()
     }
 
     fun finishTimer(
@@ -505,14 +411,13 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         _timerJobCancel()
         ambientSoundManager.stop()
         _timerStatus.value = TimerStatus.COMPLETED
-        saveTimerStateToDb()
 
         if (elapsedSecs >= 10) { // Log meaningful sessions
             viewModelScope.launch {
                 val start = if (startTimeMs > 0) startTimeMs else (now - elapsedMs)
                 val id = repository.logStudySession(
                     subjectId = _timerSubjectId.value,
-                    chapterId = _timerChapterId.value,
+                    chapterId = null,
                     taskId = null,
                     startedAt = start,
                     endedAt = now,

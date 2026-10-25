@@ -118,7 +118,6 @@ fun FocusTimerScreen(
     totalDurationSeconds: Int,
     selectedSessionType: String,
     selectedSubjectId: Long?,
-    selectedChapterId: Long? = null,
     selectedGoalTask: String?,
     isStrictFocus: Boolean,
     ambientSoundType: String,
@@ -134,7 +133,6 @@ fun FocusTimerScreen(
     onSaveCustomPreset: (String, String, Int, Int, Int, Int, Boolean) -> Unit,
     onDeletePreset: (FocusPresetEntity) -> Unit,
     onSelectSubject: (Long?) -> Unit,
-    onSelectChapter: (Long?) -> Unit = {},
     onSetGoalTask: (String?) -> Unit,
     onToggleStrict: (Boolean) -> Unit,
     onSetAmbientSound: (String) -> Unit,
@@ -646,59 +644,6 @@ fun FocusTimerScreen(
                                         fontWeight = FontWeight.Bold,
                                         color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                }
-                            }
-                        }
-                    }
-
-                    // Chapters Pills if a subject is selected
-                    if (selectedSubjectId != null) {
-                        val subjectChapters = chapters.filter { it.subjectId == selectedSubjectId }
-                        if (subjectChapters.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "Select Chapter (Optional)",
-                                fontSize = 11.sp,
-                                color = TextSecondary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            LazyRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                item {
-                                    val isAll = selectedChapterId == null
-                                    Surface(
-                                        onClick = { onSelectChapter(null) },
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (isAll) BrandTeal.copy(alpha = 0.8f) else MaterialTheme.colorScheme.surfaceVariant
-                                    ) {
-                                        Text(
-                                            text = "All Chapters",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isAll) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                                items(subjectChapters) { chap ->
-                                    val isSel = selectedChapterId == chap.id
-                                    Surface(
-                                        onClick = { onSelectChapter(chap.id) },
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (isSel) BrandTeal else MaterialTheme.colorScheme.surfaceVariant
-                                    ) {
-                                        Text(
-                                            text = chap.title,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            maxLines = 1
-                                        )
-                                    }
                                 }
                             }
                         }

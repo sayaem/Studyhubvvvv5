@@ -201,3 +201,19 @@ interface FocusGamificationDao {
     suspend fun upsertGamification(item: FocusGamificationEntity)
 }
 
+@Dao
+interface ActiveFocusSessionDao {
+    @Query("SELECT * FROM active_focus_session WHERE id = 1 LIMIT 1")
+    fun getActiveSessionFlow(): Flow<ActiveFocusSessionEntity?>
+
+    @Query("SELECT * FROM active_focus_session WHERE id = 1 LIMIT 1")
+    suspend fun getActiveSession(): ActiveFocusSessionEntity?
+
+    @Upsert
+    suspend fun saveActiveSession(session: ActiveFocusSessionEntity)
+
+    @Query("DELETE FROM active_focus_session WHERE id = 1")
+    suspend fun clearActiveSession()
+}
+
+

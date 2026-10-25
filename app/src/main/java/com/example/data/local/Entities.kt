@@ -69,8 +69,11 @@ data class StudySessionEntity(
     val startedAt: Long,
     val endedAt: Long,
     val elapsedSeconds: Int,
-    val status: String = "COMPLETED", // "COMPLETED", "ABANDONED"
-    val sessionType: String = "POMODORO_FOCUS" // "POMODORO_FOCUS", "SHORT_BREAK", "LONG_BREAK", "CUSTOM"
+    val status: String = "COMPLETED", // "COMPLETED", "ABANDONED", "ENDED_EARLY"
+    val sessionType: String = "POMODORO_FOCUS", // "POMODORO_FOCUS", "SHORT_BREAK", "LONG_BREAK", "CUSTOM", "DEEP_FOCUS", "STOPWATCH"
+    val reflectionRating: Int = 5,
+    val reflectionNotes: String? = null,
+    val distractions: Int = 0
 )
 
 @Entity(tableName = "admission_targets")
@@ -140,6 +143,8 @@ data class FocusPresetEntity(
     val targetCycles: Int = 4,
     val isStrict: Boolean = false,
     val isDefault: Boolean = false,
+    val autoStartBreaks: Boolean = false,
+    val autoStartNextFocus: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 )
 
@@ -154,4 +159,35 @@ data class FocusGamificationEntity(
     val totalFocusMinutes: Int = 0,
     val unlockedAchievementIds: String = "" // comma-separated e.g. "first_session,streak_3"
 )
+
+@Entity(tableName = "active_focus_session")
+data class ActiveFocusSessionEntity(
+    @PrimaryKey val id: Int = 1,
+    val sessionState: String = "IDLE", // IDLE, FOCUS_RUNNING, FOCUS_PAUSED, SHORT_BREAK_RUNNING, SHORT_BREAK_PAUSED, LONG_BREAK_RUNNING, LONG_BREAK_PAUSED, COMPLETED, ENDED_EARLY
+    val mode: String = "POMODORO", // POMODORO, DEEP_FOCUS, SIMPLE_TIMER, STOPWATCH
+    val phase: String = "WORK", // WORK, SHORT_BREAK, LONG_BREAK
+    val totalDurationSeconds: Int = 25 * 60,
+    val timeRemainingSeconds: Int = 25 * 60,
+    val startTimeMs: Long = 0L,
+    val accumulatedPauseMs: Long = 0L,
+    val lastPauseMs: Long = 0L,
+    val lastTickMs: Long = System.currentTimeMillis(),
+    val currentCycle: Int = 1,
+    val targetCycles: Int = 4,
+    val workMinutes: Int = 25,
+    val shortBreakMinutes: Int = 5,
+    val longBreakMinutes: Int = 15,
+    val autoStartBreaks: Boolean = false,
+    val autoStartNextFocus: Boolean = false,
+    val subjectId: Long? = null,
+    val chapterId: Long? = null,
+    val goalTask: String? = null,
+    val isStrict: Boolean = false,
+    val distractions: Int = 0,
+    val ambientSoundType: String = "OFF",
+    val ambientVolume: Float = 0.5f,
+    val reflectionNotes: String? = null,
+    val rating: Int = 5
+)
+
 

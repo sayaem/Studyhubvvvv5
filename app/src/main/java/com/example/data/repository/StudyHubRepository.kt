@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import com.example.data.local.ActiveFocusSessionEntity
 import com.example.data.local.AdmissionTargetEntity
 import com.example.data.local.AppDatabase
 import com.example.data.local.AppSettingsEntity
@@ -135,7 +136,10 @@ class StudyHubRepository(private val db: AppDatabase) {
         endedAt: Long,
         elapsedSeconds: Int,
         status: String = "COMPLETED",
-        sessionType: String = "POMODORO_FOCUS"
+        sessionType: String = "POMODORO_FOCUS",
+        reflectionRating: Int = 5,
+        reflectionNotes: String? = null,
+        distractions: Int = 0
     ): Long {
         if (elapsedSeconds <= 0) return 0L
         val session = StudySessionEntity(
@@ -146,9 +150,25 @@ class StudyHubRepository(private val db: AppDatabase) {
             endedAt = endedAt,
             elapsedSeconds = elapsedSeconds,
             status = status,
-            sessionType = sessionType
+            sessionType = sessionType,
+            reflectionRating = reflectionRating,
+            reflectionNotes = reflectionNotes,
+            distractions = distractions
         )
         return db.sessionDao().insertSession(session)
+    }
+
+    // Active Focus Session State Machine Persistence
+    val activeFocusSession: Flow<ActiveFocusSessionEntity?> = db.activeFocusSessionDao().getActiveSessionFlow()
+
+    suspend fun getActiveFocusSessionSync(): ActiveFocusSessionEntity? = db.activeFocusSessionDao().getActiveSession()
+
+    suspend fun saveActiveFocusSession(session: ActiveFocusSessionEntity) {
+        db.activeFocusSessionDao().saveActiveSession(session)
+    }
+
+    suspend fun clearActiveFocusSession() {
+        db.activeFocusSessionDao().clearActiveSession()
     }
 
     // Admission Targets

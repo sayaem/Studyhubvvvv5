@@ -106,8 +106,15 @@ fun StudyHubApp(
     val totalDurationSeconds by viewModel.totalDurationSeconds.collectAsStateWithLifecycle()
     val selectedSessionType by viewModel.selectedSessionType.collectAsStateWithLifecycle()
     val timerSubjectId by viewModel.timerSubjectId.collectAsStateWithLifecycle()
+    val timerChapterId by viewModel.timerChapterId.collectAsStateWithLifecycle()
     val selectedGoalTask by viewModel.selectedGoalTask.collectAsStateWithLifecycle()
     val isStrictFocus by viewModel.isStrictFocus.collectAsStateWithLifecycle()
+    val distractionCount by viewModel.distractionCount.collectAsStateWithLifecycle()
+    val workMinutes by viewModel.workMinutes.collectAsStateWithLifecycle()
+    val shortBreakMinutes by viewModel.shortBreakMinutes.collectAsStateWithLifecycle()
+    val longBreakMinutes by viewModel.longBreakMinutes.collectAsStateWithLifecycle()
+    val autoStartBreaks by viewModel.autoStartBreaks.collectAsStateWithLifecycle()
+    val autoStartNextFocus by viewModel.autoStartNextFocus.collectAsStateWithLifecycle()
     val ambientSoundType by viewModel.ambientSoundType.collectAsStateWithLifecycle()
     val ambientVolume by viewModel.ambientVolume.collectAsStateWithLifecycle()
     val focusPresets by viewModel.focusPresets.collectAsStateWithLifecycle()
@@ -391,8 +398,15 @@ fun StudyHubApp(
                                         totalDurationSeconds = totalDurationSeconds,
                                         selectedSessionType = selectedSessionType,
                                         selectedSubjectId = timerSubjectId,
+                                        selectedChapterId = timerChapterId,
                                         selectedGoalTask = selectedGoalTask,
                                         isStrictFocus = isStrictFocus,
+                                        distractionCount = distractionCount,
+                                        workMinutes = workMinutes,
+                                        shortBreakMinutes = shortBreakMinutes,
+                                        longBreakMinutes = longBreakMinutes,
+                                        autoStartBreaks = autoStartBreaks,
+                                        autoStartNextFocus = autoStartNextFocus,
                                         ambientSoundType = ambientSoundType,
                                         ambientVolume = ambientVolume,
                                         subjects = subjects,
@@ -402,13 +416,19 @@ fun StudyHubApp(
                                         gamification = focusGamification,
                                         dailyGoalMinutes = userProfile?.dailyGoalMinutes ?: 240,
                                         onSelectMode = { viewModel.setTimerMode(it) },
+                                        onSelectDurationMinutes = { viewModel.selectTimerDuration(it, "CUSTOM") },
                                         onApplyPreset = { viewModel.applyPreset(it) },
-                                        onSaveCustomPreset = { title, mode, workMins, shortMins, longMins, cycles, isStrict ->
-                                            viewModel.saveCustomPreset(title, mode, workMins, shortMins, longMins, cycles, isStrict)
+                                        onSaveCustomPreset = { title, mode, workMins, shortMins, longMins, cycles, isStrict, autoB, autoN ->
+                                            viewModel.saveCustomPreset(title, mode, workMins, shortMins, longMins, cycles, isStrict, autoB, autoN)
                                         },
                                         onDeletePreset = { viewModel.deleteFocusPreset(it) },
+                                        onUpdateSettings = { workMins, shortMins, longMins, cycles, autoB, autoN ->
+                                            viewModel.updateFocusSettings(workMins, shortMins, longMins, cycles, autoB, autoN)
+                                        },
                                         onSelectSubject = { viewModel.setTimerSubject(it) },
+                                        onSelectChapter = { viewModel.setTimerChapter(it) },
                                         onSetGoalTask = { viewModel.setGoalTask(it) },
+                                        onRecordDistraction = { viewModel.recordDistraction() },
                                         onToggleStrict = { viewModel.toggleStrictFocus(it) },
                                         onSetAmbientSound = { viewModel.setAmbientSound(it) },
                                         onSetAmbientVolume = { viewModel.setAmbientVolume(it) },

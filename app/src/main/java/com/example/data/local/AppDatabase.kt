@@ -17,9 +17,10 @@ import androidx.room.RoomDatabase
         NotificationItemEntity::class,
         AppSettingsEntity::class,
         FocusPresetEntity::class,
-        FocusGamificationEntity::class
+        FocusGamificationEntity::class,
+        ActiveFocusSessionEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun settingsDao(): SettingsDao
     abstract fun focusPresetDao(): FocusPresetDao
     abstract fun focusGamificationDao(): FocusGamificationDao
+    abstract fun activeFocusSessionDao(): ActiveFocusSessionDao
+
 
 
     companion object {

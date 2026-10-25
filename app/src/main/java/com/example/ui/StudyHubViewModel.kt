@@ -35,6 +35,18 @@ enum class TimerStatus {
     IDLE, RUNNING, PAUSED, COMPLETED
 }
 
+enum class FocusSessionState {
+    IDLE,
+    FOCUS_RUNNING,
+    FOCUS_PAUSED,
+    SHORT_BREAK_RUNNING,
+    SHORT_BREAK_PAUSED,
+    LONG_BREAK_RUNNING,
+    LONG_BREAK_PAUSED,
+    COMPLETED,
+    ENDED_EARLY
+}
+
 class StudyHubViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
@@ -88,7 +100,10 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     val focusGamification: StateFlow<com.example.data.local.FocusGamificationEntity?> = repository.focusGamification
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Focus 2.0 Timer State
+    // Focus 3.0 Timer State
+    private val _focusSessionState = MutableStateFlow(FocusSessionState.IDLE)
+    val focusSessionState: StateFlow<FocusSessionState> = _focusSessionState.asStateFlow()
+
     private val _timerStatus = MutableStateFlow(TimerStatus.IDLE)
     val timerStatus: StateFlow<TimerStatus> = _timerStatus.asStateFlow()
 
@@ -119,8 +134,29 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     private val _timerSubjectId = MutableStateFlow<Long?>(null)
     val timerSubjectId: StateFlow<Long?> = _timerSubjectId.asStateFlow()
 
+    private val _timerChapterId = MutableStateFlow<Long?>(null)
+    val timerChapterId: StateFlow<Long?> = _timerChapterId.asStateFlow()
+
     private val _selectedGoalTask = MutableStateFlow<String?>(null)
     val selectedGoalTask: StateFlow<String?> = _selectedGoalTask.asStateFlow()
+
+    private val _distractionCount = MutableStateFlow(0)
+    val distractionCount: StateFlow<Int> = _distractionCount.asStateFlow()
+
+    private val _workMinutes = MutableStateFlow(25)
+    val workMinutes: StateFlow<Int> = _workMinutes.asStateFlow()
+
+    private val _shortBreakMinutes = MutableStateFlow(5)
+    val shortBreakMinutes: StateFlow<Int> = _shortBreakMinutes.asStateFlow()
+
+    private val _longBreakMinutes = MutableStateFlow(15)
+    val longBreakMinutes: StateFlow<Int> = _longBreakMinutes.asStateFlow()
+
+    private val _autoStartBreaks = MutableStateFlow(false)
+    val autoStartBreaks: StateFlow<Boolean> = _autoStartBreaks.asStateFlow()
+
+    private val _autoStartNextFocus = MutableStateFlow(false)
+    val autoStartNextFocus: StateFlow<Boolean> = _autoStartNextFocus.asStateFlow()
 
     private val _ambientSoundType = MutableStateFlow("OFF")
     val ambientSoundType: StateFlow<String> = _ambientSoundType.asStateFlow()
@@ -142,6 +178,7 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
     init {
         viewModelScope.launch {
             repository.seedDefaultFocusPresetsIfEmpty()
+            restoreActiveSessionIfAny()
         }
     }
 
@@ -196,15 +233,19 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // Timer Actions
+    // Timer Actions & Focus 3.0 State Machine
     fun setTimerMode(mode: String) {
-        if (_timerStatus.value == TimerStatus.RUNNING) return
+        if (_focusSessionState.value == FocusSessionState.FOCUS_RUNNING ||
+            _focusSessionState.value == FocusSessionState.SHORT_BREAK_RUNNING ||
+            _focusSessionState.value == FocusSessionState.LONG_BREAK_RUNNING
+        ) return
+
         _timerMode.value = mode
         when (mode) {
             "POMODORO" -> {
                 _pomodoroPhase.value = "WORK"
                 _currentCycle.value = 1
-                selectTimerDuration(25, "POMODORO_FOCUS")
+                selectTimerDuration(_workMinutes.value, "POMODORO_FOCUS")
             }
             "DEEP_FOCUS" -> {
                 selectTimerDuration(50, "POMODORO_FOCUS")
@@ -217,19 +258,50 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
                 _totalDurationSeconds.value = 0
                 _timeRemainingSeconds.value = 0
                 _selectedSessionType.value = "CUSTOM"
+                _focusSessionState.value = FocusSessionState.IDLE
                 _timerStatus.value = TimerStatus.IDLE
+                persistActiveSession()
             }
         }
     }
 
     fun applyPreset(preset: com.example.data.local.FocusPresetEntity) {
-        if (_timerStatus.value == TimerStatus.RUNNING) return
+        if (_focusSessionState.value == FocusSessionState.FOCUS_RUNNING ||
+            _focusSessionState.value == FocusSessionState.SHORT_BREAK_RUNNING ||
+            _focusSessionState.value == FocusSessionState.LONG_BREAK_RUNNING
+        ) return
+
         _timerMode.value = preset.mode
         _isStrictFocus.value = preset.isStrict
         _targetCycles.value = preset.targetCycles
         _currentCycle.value = 1
         _pomodoroPhase.value = "WORK"
+        _workMinutes.value = preset.workMinutes
+        _shortBreakMinutes.value = preset.shortBreakMinutes
+        _longBreakMinutes.value = preset.longBreakMinutes
+        _autoStartBreaks.value = preset.autoStartBreaks
+        _autoStartNextFocus.value = preset.autoStartNextFocus
         selectTimerDuration(preset.workMinutes, if (preset.mode == "POMODORO") "POMODORO_FOCUS" else "CUSTOM")
+    }
+
+    fun updateFocusSettings(
+        workMins: Int,
+        shortBreakMins: Int,
+        longBreakMins: Int,
+        cycles: Int,
+        autoBreaks: Boolean,
+        autoNextFocus: Boolean
+    ) {
+        _workMinutes.value = workMins.coerceIn(1, 180)
+        _shortBreakMinutes.value = shortBreakMins.coerceIn(1, 60)
+        _longBreakMinutes.value = longBreakMins.coerceIn(1, 90)
+        _targetCycles.value = cycles.coerceIn(1, 12)
+        _autoStartBreaks.value = autoBreaks
+        _autoStartNextFocus.value = autoNextFocus
+
+        if (_pomodoroPhase.value == "WORK" && (_focusSessionState.value == FocusSessionState.IDLE)) {
+            selectTimerDuration(_workMinutes.value, "POMODORO_FOCUS")
+        }
     }
 
     fun saveCustomPreset(
@@ -239,19 +311,23 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         shortBreakMins: Int,
         longBreakMins: Int,
         cycles: Int,
-        isStrict: Boolean
+        isStrict: Boolean,
+        autoStartBreaks: Boolean = false,
+        autoStartNextFocus: Boolean = false
     ) {
         viewModelScope.launch {
             repository.saveFocusPreset(
                 com.example.data.local.FocusPresetEntity(
-                    title = title.ifBlank { "Custom $workMins m" },
+                    title = title.ifBlank { "Custom ${workMins}m" },
                     mode = mode,
                     workMinutes = workMins,
                     shortBreakMinutes = shortBreakMins,
                     longBreakMinutes = longBreakMins,
                     targetCycles = cycles,
                     isStrict = isStrict,
-                    isDefault = false
+                    isDefault = false,
+                    autoStartBreaks = autoStartBreaks,
+                    autoStartNextFocus = autoStartNextFocus
                 )
             )
         }
@@ -265,25 +341,46 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
 
     fun setGoalTask(goal: String?) {
         _selectedGoalTask.value = goal
+        persistActiveSession()
+    }
+
+    fun recordDistraction() {
+        _distractionCount.value += 1
+        persistActiveSession()
     }
 
     fun selectTimerDuration(minutes: Int, sessionType: String) {
-        if (_timerStatus.value == TimerStatus.RUNNING) return
+        if (_focusSessionState.value == FocusSessionState.FOCUS_RUNNING ||
+            _focusSessionState.value == FocusSessionState.SHORT_BREAK_RUNNING ||
+            _focusSessionState.value == FocusSessionState.LONG_BREAK_RUNNING
+        ) return
+
         _timerJobCancel()
         val secs = minutes * 60
         _totalDurationSeconds.value = secs
         _timeRemainingSeconds.value = secs
         targetDurationMs = secs * 1000L
         _selectedSessionType.value = sessionType
+        _focusSessionState.value = FocusSessionState.IDLE
         _timerStatus.value = TimerStatus.IDLE
+        persistActiveSession()
     }
 
     fun setTimerSubject(subjectId: Long?) {
         _timerSubjectId.value = subjectId
+        // Reset chapter if subject changed
+        _timerChapterId.value = null
+        persistActiveSession()
+    }
+
+    fun setTimerChapter(chapterId: Long?) {
+        _timerChapterId.value = chapterId
+        persistActiveSession()
     }
 
     fun toggleStrictFocus(enabled: Boolean) {
         _isStrictFocus.value = enabled
+        persistActiveSession()
     }
 
     fun setAmbientSound(soundType: String) {
@@ -296,32 +393,60 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         ambientSoundManager.setVolume(volume)
     }
 
-    fun startTimer() {
+    fun startTimer(isRestoring: Boolean = false) {
         val now = System.currentTimeMillis()
-        if (_timerStatus.value == TimerStatus.IDLE) {
-            startTimeMs = now
-            accumulatedPauseMs = 0L
-        } else if (_timerStatus.value == TimerStatus.PAUSED) {
-            accumulatedPauseMs += (now - lastPauseMs)
+        val currentState = _focusSessionState.value
+
+        if (!isRestoring) {
+            if (currentState == FocusSessionState.IDLE) {
+                startTimeMs = now
+                accumulatedPauseMs = 0L
+                _distractionCount.value = 0
+            } else if (isPausedState(currentState)) {
+                accumulatedPauseMs += (now - lastPauseMs)
+            }
         }
 
+        val nextState = when (_timerMode.value) {
+            "POMODORO" -> when (_pomodoroPhase.value) {
+                "SHORT_BREAK" -> FocusSessionState.SHORT_BREAK_RUNNING
+                "LONG_BREAK" -> FocusSessionState.LONG_BREAK_RUNNING
+                else -> FocusSessionState.FOCUS_RUNNING
+            }
+            else -> FocusSessionState.FOCUS_RUNNING
+        }
+
+        _focusSessionState.value = nextState
         _timerStatus.value = TimerStatus.RUNNING
 
         if (_ambientSoundType.value != "OFF") {
             ambientSoundManager.setSound(_ambientSoundType.value)
         }
 
+        persistActiveSession()
+
         _timerJobCancel()
         timerJob = viewModelScope.launch {
-            while (_timerStatus.value == TimerStatus.RUNNING) {
+            while (_focusSessionState.value == FocusSessionState.FOCUS_RUNNING ||
+                _focusSessionState.value == FocusSessionState.SHORT_BREAK_RUNNING ||
+                _focusSessionState.value == FocusSessionState.LONG_BREAK_RUNNING
+            ) {
                 delay(500L)
                 updateTimerTick()
             }
         }
     }
 
+    private fun isPausedState(state: FocusSessionState): Boolean {
+        return state == FocusSessionState.FOCUS_PAUSED ||
+                state == FocusSessionState.SHORT_BREAK_PAUSED ||
+                state == FocusSessionState.LONG_BREAK_PAUSED
+    }
+
     private fun updateTimerTick() {
-        if (_timerStatus.value != TimerStatus.RUNNING) return
+        val currentState = _focusSessionState.value
+        if (!isRunningState(currentState)) return
+
         val now = System.currentTimeMillis()
         val elapsedMs = maxOf(0L, now - startTimeMs - accumulatedPauseMs)
 
@@ -333,22 +458,57 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
             _timeRemainingSeconds.value = remainSecs
 
             if (remainMs <= 0) {
-                finishTimer(completedNormally = true)
+                handleTimerFinishedNormally()
             }
         }
     }
 
+    private fun isRunningState(state: FocusSessionState): Boolean {
+        return state == FocusSessionState.FOCUS_RUNNING ||
+                state == FocusSessionState.SHORT_BREAK_RUNNING ||
+                state == FocusSessionState.LONG_BREAK_RUNNING
+    }
+
+    private fun handleTimerFinishedNormally() {
+        if (_timerMode.value == "POMODORO") {
+            if (_pomodoroPhase.value == "WORK") {
+                // Focus work finished! Transition to break
+                if (_autoStartBreaks.value) {
+                    transitionToNextPhase(autoStart = true)
+                } else {
+                    transitionToNextPhase(autoStart = false)
+                }
+            } else {
+                // Break finished!
+                if (_autoStartNextFocus.value) {
+                    transitionToNextPhase(autoStart = true)
+                } else {
+                    transitionToNextPhase(autoStart = false)
+                }
+            }
+        } else {
+            finishTimer(completedNormally = true)
+        }
+    }
+
     fun pauseTimer() {
-        if (_timerStatus.value == TimerStatus.RUNNING) {
+        if (isRunningState(_focusSessionState.value)) {
+            val pausedState = when (_focusSessionState.value) {
+                FocusSessionState.SHORT_BREAK_RUNNING -> FocusSessionState.SHORT_BREAK_PAUSED
+                FocusSessionState.LONG_BREAK_RUNNING -> FocusSessionState.LONG_BREAK_PAUSED
+                else -> FocusSessionState.FOCUS_PAUSED
+            }
+            _focusSessionState.value = pausedState
             _timerStatus.value = TimerStatus.PAUSED
             lastPauseMs = System.currentTimeMillis()
             _timerJobCancel()
             ambientSoundManager.stop()
+            persistActiveSession()
         }
     }
 
     fun resumeTimer() {
-        if (_timerStatus.value == TimerStatus.PAUSED) {
+        if (isPausedState(_focusSessionState.value)) {
             startTimer()
         }
     }
@@ -361,33 +521,74 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         } else {
             _timeRemainingSeconds.value = _totalDurationSeconds.value
         }
+        _focusSessionState.value = FocusSessionState.IDLE
         _timerStatus.value = TimerStatus.IDLE
+        _distractionCount.value = 0
+        clearActiveSession()
     }
 
     fun skipPhase() {
         _timerJobCancel()
         ambientSoundManager.stop()
-
         if (_timerMode.value == "POMODORO") {
-            if (_pomodoroPhase.value == "WORK") {
-                if (_currentCycle.value >= _targetCycles.value) {
-                    _pomodoroPhase.value = "LONG_BREAK"
-                    selectTimerDuration(15, "LONG_BREAK")
-                } else {
-                    _pomodoroPhase.value = "SHORT_BREAK"
-                    selectTimerDuration(5, "SHORT_BREAK")
-                }
-            } else {
-                if (_pomodoroPhase.value == "LONG_BREAK") {
-                    _currentCycle.value = 1
-                } else {
-                    _currentCycle.value += 1
-                }
-                _pomodoroPhase.value = "WORK"
-                selectTimerDuration(25, "POMODORO_FOCUS")
-            }
+            transitionToNextPhase(autoStart = false)
         } else {
             resetTimer()
+        }
+    }
+
+    private fun transitionToNextPhase(autoStart: Boolean) {
+        val now = System.currentTimeMillis()
+        startTimeMs = now
+        accumulatedPauseMs = 0L
+
+        if (_pomodoroPhase.value == "WORK") {
+            // Work finished -> Break
+            val isLong = _currentCycle.value >= _targetCycles.value
+            _pomodoroPhase.value = if (isLong) "LONG_BREAK" else "SHORT_BREAK"
+            val breakMins = if (isLong) _longBreakMinutes.value else _shortBreakMinutes.value
+            val breakSecs = breakMins * 60
+            _totalDurationSeconds.value = breakSecs
+            _timeRemainingSeconds.value = breakSecs
+            targetDurationMs = breakSecs * 1000L
+            _selectedSessionType.value = if (isLong) "LONG_BREAK" else "SHORT_BREAK"
+
+            val nextState = if (isLong) {
+                if (autoStart) FocusSessionState.LONG_BREAK_RUNNING else FocusSessionState.LONG_BREAK_PAUSED
+            } else {
+                if (autoStart) FocusSessionState.SHORT_BREAK_RUNNING else FocusSessionState.SHORT_BREAK_PAUSED
+            }
+            _focusSessionState.value = nextState
+            _timerStatus.value = if (autoStart) TimerStatus.RUNNING else TimerStatus.PAUSED
+
+            if (autoStart) {
+                startTimer(isRestoring = true)
+            } else {
+                persistActiveSession()
+            }
+        } else {
+            // Break finished -> Next Focus cycle
+            if (_pomodoroPhase.value == "LONG_BREAK") {
+                _currentCycle.value = 1
+            } else {
+                _currentCycle.value += 1
+            }
+            _pomodoroPhase.value = "WORK"
+            val workSecs = _workMinutes.value * 60
+            _totalDurationSeconds.value = workSecs
+            _timeRemainingSeconds.value = workSecs
+            targetDurationMs = workSecs * 1000L
+            _selectedSessionType.value = "POMODORO_FOCUS"
+
+            val nextState = if (autoStart) FocusSessionState.FOCUS_RUNNING else FocusSessionState.FOCUS_PAUSED
+            _focusSessionState.value = nextState
+            _timerStatus.value = if (autoStart) TimerStatus.RUNNING else TimerStatus.PAUSED
+
+            if (autoStart) {
+                startTimer(isRestoring = true)
+            } else {
+                persistActiveSession()
+            }
         }
     }
 
@@ -410,20 +611,26 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
 
         _timerJobCancel()
         ambientSoundManager.stop()
+        _focusSessionState.value = if (completedNormally) FocusSessionState.COMPLETED else FocusSessionState.ENDED_EARLY
         _timerStatus.value = TimerStatus.COMPLETED
+        clearActiveSession()
 
         if (elapsedSecs >= 10) { // Log meaningful sessions
             viewModelScope.launch {
                 val start = if (startTimeMs > 0) startTimeMs else (now - elapsedMs)
+                val totalDistractions = if (distractions > 0) distractions else _distractionCount.value
                 val id = repository.logStudySession(
                     subjectId = _timerSubjectId.value,
-                    chapterId = null,
+                    chapterId = _timerChapterId.value,
                     taskId = null,
                     startedAt = start,
                     endedAt = now,
                     elapsedSeconds = elapsedSecs,
-                    status = "COMPLETED",
-                    sessionType = _selectedSessionType.value
+                    status = if (completedNormally) "COMPLETED" else "ENDED_EARLY",
+                    sessionType = _selectedSessionType.value,
+                    reflectionRating = rating,
+                    reflectionNotes = notes,
+                    distractions = totalDistractions
                 )
                 lastRecordedSessionId = id
 
@@ -451,6 +658,122 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
                     title = title,
                     message = msg
                 )
+            }
+        }
+    }
+
+    private fun persistActiveSession() {
+        viewModelScope.launch {
+            val currentState = _focusSessionState.value
+            if (currentState == FocusSessionState.IDLE ||
+                currentState == FocusSessionState.COMPLETED ||
+                currentState == FocusSessionState.ENDED_EARLY
+            ) {
+                repository.clearActiveFocusSession()
+            } else {
+                val entity = com.example.data.local.ActiveFocusSessionEntity(
+                    sessionState = currentState.name,
+                    mode = _timerMode.value,
+                    phase = _pomodoroPhase.value,
+                    currentCycle = _currentCycle.value,
+                    targetCycles = _targetCycles.value,
+                    subjectId = _timerSubjectId.value,
+                    chapterId = _timerChapterId.value,
+                    goalTask = _selectedGoalTask.value,
+                    isStrict = _isStrictFocus.value,
+                    totalDurationSeconds = _totalDurationSeconds.value,
+                    timeRemainingSeconds = _timeRemainingSeconds.value,
+                    startTimeMs = startTimeMs,
+                    accumulatedPauseMs = accumulatedPauseMs,
+                    lastPauseMs = lastPauseMs,
+                    lastTickMs = System.currentTimeMillis(),
+                    distractions = _distractionCount.value,
+                    workMinutes = _workMinutes.value,
+                    shortBreakMinutes = _shortBreakMinutes.value,
+                    longBreakMinutes = _longBreakMinutes.value,
+                    autoStartBreaks = _autoStartBreaks.value,
+                    autoStartNextFocus = _autoStartNextFocus.value
+                )
+                repository.saveActiveFocusSession(entity)
+            }
+        }
+    }
+
+    private fun clearActiveSession() {
+        viewModelScope.launch {
+            repository.clearActiveFocusSession()
+        }
+    }
+
+    private suspend fun restoreActiveSessionIfAny() {
+        val active = repository.getActiveFocusSessionSync() ?: return
+        val savedState = try {
+            FocusSessionState.valueOf(active.sessionState)
+        } catch (e: Exception) {
+            FocusSessionState.IDLE
+        }
+
+        if (savedState == FocusSessionState.IDLE ||
+            savedState == FocusSessionState.COMPLETED ||
+            savedState == FocusSessionState.ENDED_EARLY
+        ) {
+            return
+        }
+
+        _timerMode.value = active.mode
+        _pomodoroPhase.value = active.phase
+        _currentCycle.value = active.currentCycle
+        _targetCycles.value = active.targetCycles
+        _timerSubjectId.value = active.subjectId
+        _timerChapterId.value = active.chapterId
+        _selectedGoalTask.value = active.goalTask
+        _isStrictFocus.value = active.isStrict
+        _totalDurationSeconds.value = active.totalDurationSeconds
+        _distractionCount.value = active.distractions
+        _workMinutes.value = active.workMinutes
+        _shortBreakMinutes.value = active.shortBreakMinutes
+        _longBreakMinutes.value = active.longBreakMinutes
+        _autoStartBreaks.value = active.autoStartBreaks
+        _autoStartNextFocus.value = active.autoStartNextFocus
+
+        startTimeMs = active.startTimeMs
+        accumulatedPauseMs = active.accumulatedPauseMs
+        lastPauseMs = active.lastPauseMs
+        targetDurationMs = active.totalDurationSeconds * 1000L
+
+        val now = System.currentTimeMillis()
+        val isPaused = savedState == FocusSessionState.FOCUS_PAUSED ||
+                savedState == FocusSessionState.SHORT_BREAK_PAUSED ||
+                savedState == FocusSessionState.LONG_BREAK_PAUSED
+
+        if (isPaused) {
+            _timeRemainingSeconds.value = active.timeRemainingSeconds
+            _focusSessionState.value = savedState
+            _timerStatus.value = TimerStatus.PAUSED
+        } else {
+            val elapsedMs = maxOf(0L, now - startTimeMs - accumulatedPauseMs)
+            if (_timerMode.value == "STOPWATCH") {
+                _timeRemainingSeconds.value = (elapsedMs / 1000L).toInt()
+                _focusSessionState.value = savedState
+                _timerStatus.value = TimerStatus.RUNNING
+                startTimer(isRestoring = true)
+            } else {
+                val remainMs = targetDurationMs - elapsedMs
+                if (remainMs <= 0) {
+                    _timeRemainingSeconds.value = 0
+                    if (active.phase == "WORK" && _autoStartBreaks.value) {
+                        transitionToNextPhase(autoStart = true)
+                    } else {
+                        _focusSessionState.value = FocusSessionState.COMPLETED
+                        _timerStatus.value = TimerStatus.COMPLETED
+                        finishTimer(completedNormally = true)
+                    }
+                } else {
+                    _timeRemainingSeconds.value = (remainMs / 1000L).toInt()
+                    _focusSessionState.value = savedState
+                    _timerStatus.value = TimerStatus.RUNNING
+                    startTimer(isRestoring = true)
+                }
             }
         }
     }

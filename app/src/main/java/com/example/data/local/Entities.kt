@@ -55,6 +55,7 @@ data class StudyTaskEntity(
     val status: String = "PENDING", // "PENDING", "COMPLETED", "CANCELLED"
     val priority: String = "MEDIUM", // "LOW", "MEDIUM", "HIGH"
     val notes: String? = null,
+    val planType: String = "STUDY", // "STUDY", "REVISION", "EXAM", "ASSIGNMENT", "BREAK", "PERSONAL"
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

@@ -113,6 +113,10 @@ class StudyHubRepository(private val db: AppDatabase) {
         )
     }
 
+    suspend fun updateTask(task: StudyTaskEntity) {
+        db.taskDao().updateTask(task.copy(updatedAt = System.currentTimeMillis()))
+    }
+
     suspend fun deleteTask(task: StudyTaskEntity) {
         db.taskDao().deleteTask(task)
     }

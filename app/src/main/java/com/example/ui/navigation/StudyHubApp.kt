@@ -429,11 +429,29 @@ fun StudyHubApp(
                                         tasks = tasks,
                                         admissionTargets = admissionTargets,
                                         subjects = subjects,
+                                        chapters = chapters,
+                                        sessions = sessions,
+                                        userProfile = userProfile,
+                                        gamification = focusGamification,
                                         onCreateTask = { title, date, time, dur, subId, priority, notesText ->
-                                            viewModel.createTask(title, date, time, dur, subId, priority, notesText) {}
+                                            viewModel.createTask(title, date, time, dur, subId, null, priority, "STUDY", notesText)
+                                        },
+                                        onCreatePlan = { title, date, time, dur, subId, chapId, priority, planType, notesText ->
+                                            viewModel.createTask(title, date, time, dur, subId, chapId, priority, planType, notesText)
+                                        },
+                                        onUpdatePlan = { updatedTask ->
+                                            viewModel.updateTask(updatedTask)
                                         },
                                         onToggleTaskStatus = { viewModel.toggleTaskStatus(it) },
-                                        onDeleteTask = { viewModel.deleteTask(it) }
+                                        onDeleteTask = { viewModel.deleteTask(it) },
+                                        onLaunchInFocus = { subId, chapId, taskTitle, durationMins ->
+                                            viewModel.setTimerSubject(subId)
+                                            viewModel.setGoalTask(taskTitle)
+                                            viewModel.selectTimerDuration(durationMins, "POMODORO_FOCUS")
+                                            navigateTo(NavigationDestination.MainTab(NavDestination.FOCUS))
+                                        },
+                                        onNavigateToNotifications = { navigateTo(NavigationDestination.Notifications) },
+                                        onNavigateToProfile = { navigateTo(NavigationDestination.Profile) }
                                     )
                                 }
 

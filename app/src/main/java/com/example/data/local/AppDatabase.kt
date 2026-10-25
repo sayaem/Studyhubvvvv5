@@ -19,7 +19,7 @@ import androidx.room.RoomDatabase
         FocusPresetEntity::class,
         FocusGamificationEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

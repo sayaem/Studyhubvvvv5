@@ -606,9 +606,11 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
         time: String?,
         duration: Int,
         subjectId: Long?,
-        priority: String,
-        notes: String?,
-        onSuccess: () -> Unit
+        chapterId: Long? = null,
+        priority: String = "MEDIUM",
+        planType: String = "STUDY",
+        notes: String? = null,
+        onSuccess: () -> Unit = {}
     ) {
         viewModelScope.launch {
             repository.createTask(
@@ -618,11 +620,20 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
                     time = time,
                     durationMinutes = duration,
                     subjectId = subjectId,
+                    chapterId = chapterId,
                     status = "PENDING",
                     priority = priority,
+                    planType = planType,
                     notes = notes
                 )
             )
+            onSuccess()
+        }
+    }
+
+    fun updateTask(task: StudyTaskEntity, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.updateTask(task)
             onSuccess()
         }
     }

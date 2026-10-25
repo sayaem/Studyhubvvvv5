@@ -125,7 +125,22 @@ data class AppSettingsEntity(
     val quietHoursStartHour: Int = 22, // 10 PM
     val quietHoursEndHour: Int = 7,    // 7 AM
     val lastNotificationTime: Long = 0L,
-    val consecutiveIgnoredCount: Int = 0
+    val consecutiveIgnoredCount: Int = 0,
+    val timerStatus: String = "IDLE",
+    val timerMode: String = "POMODORO",
+    val pomodoroPhase: String = "WORK",
+    val currentCycle: Int = 1,
+    val targetCycles: Int = 4,
+    val totalDurationSeconds: Int = 25 * 60,
+    val timeRemainingSeconds: Int = 25 * 60,
+    val startTimeMs: Long = 0L,
+    val targetDurationMs: Long = 25 * 60 * 1000L,
+    val accumulatedPauseMs: Long = 0L,
+    val lastPauseMs: Long = 0L,
+    val isStrictFocus: Boolean = false,
+    val timerSubjectId: Long? = null,
+    val timerChapterId: Long? = null,
+    val selectedGoalTask: String? = null
 )
 
 @Entity(tableName = "focus_presets")

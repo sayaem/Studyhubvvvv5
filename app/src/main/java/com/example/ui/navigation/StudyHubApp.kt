@@ -106,6 +106,7 @@ fun StudyHubApp(
     val totalDurationSeconds by viewModel.totalDurationSeconds.collectAsStateWithLifecycle()
     val selectedSessionType by viewModel.selectedSessionType.collectAsStateWithLifecycle()
     val timerSubjectId by viewModel.timerSubjectId.collectAsStateWithLifecycle()
+    val timerChapterId by viewModel.timerChapterId.collectAsStateWithLifecycle()
     val selectedGoalTask by viewModel.selectedGoalTask.collectAsStateWithLifecycle()
     val isStrictFocus by viewModel.isStrictFocus.collectAsStateWithLifecycle()
     val ambientSoundType by viewModel.ambientSoundType.collectAsStateWithLifecycle()

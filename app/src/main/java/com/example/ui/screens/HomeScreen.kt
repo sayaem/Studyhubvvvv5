@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventNote
@@ -76,6 +78,7 @@ fun HomeScreen(
     onStartFocusClick: () -> Unit,
     onTodayPlanClick: () -> Unit,
     onAddAdmissionClick: () -> Unit,
+    onOpenStatsClick: () -> Unit = {},
     onOpenAdmissionCalendar: () -> Unit = {},
     onSubjectClick: (Long) -> Unit,
     onAvatarClick: () -> Unit
@@ -340,34 +343,50 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        Row(
+        LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            QuickActionButton(
-                icon = Icons.Default.Add,
-                label = "Add Subject",
-                color = MaterialTheme.colorScheme.primary,
-                onClick = onAddSubjectClick
-            )
-            QuickActionButton(
-                icon = Icons.Default.EventNote,
-                label = "Today's Plan",
-                color = Color(0xFF2563EB),
-                onClick = onTodayPlanClick
-            )
-            QuickActionButton(
-                icon = Icons.Default.Timer,
-                label = "Start Focus",
-                color = Color(0xFFF97316),
-                onClick = onStartFocusClick
-            )
-            QuickActionButton(
-                icon = Icons.Default.School,
-                label = "Add Target",
-                color = Color(0xFF8B5CF6),
-                onClick = onAddAdmissionClick
-            )
+            item {
+                QuickActionButton(
+                    icon = Icons.Default.Add,
+                    label = "Add Subject",
+                    color = MaterialTheme.colorScheme.primary,
+                    onClick = onAddSubjectClick
+                )
+            }
+            item {
+                QuickActionButton(
+                    icon = Icons.Default.EventNote,
+                    label = "Today's Plan",
+                    color = Color(0xFF2563EB),
+                    onClick = onTodayPlanClick
+                )
+            }
+            item {
+                QuickActionButton(
+                    icon = Icons.Default.Timer,
+                    label = "Start Focus",
+                    color = Color(0xFFF97316),
+                    onClick = onStartFocusClick
+                )
+            }
+            item {
+                QuickActionButton(
+                    icon = Icons.Default.BarChart,
+                    label = "Stats",
+                    color = Color(0xFF0D9488),
+                    onClick = onOpenStatsClick
+                )
+            }
+            item {
+                QuickActionButton(
+                    icon = Icons.Default.School,
+                    label = "Add Target",
+                    color = Color(0xFF8B5CF6),
+                    onClick = onAddAdmissionClick
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

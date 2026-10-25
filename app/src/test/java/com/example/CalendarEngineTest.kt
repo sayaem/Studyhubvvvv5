@@ -24,6 +24,34 @@ class CalendarEngineTest {
         return maxOf(start1, start2) < minOf(end1, end2)
     }
 
+    private fun formatMinutesToAmPm(totalMinutes: Int): String {
+        val norm = (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60)
+        val hour24 = norm / 60
+        val minute = norm % 60
+        val isPm = hour24 >= 12
+        val hour12 = if (hour24 == 0) 12 else if (hour24 > 12) hour24 - 12 else hour24
+        val amPm = if (isPm) "PM" else "AM"
+        return String.format("%02d:%02d %s", hour12, minute, amPm)
+    }
+
+    private fun formatPlanTimeRange(timeStr: String?, durationMinutes: Int): String {
+        val startMins = parseTimeToMinutes(timeStr)
+        val endMins = (startMins + durationMinutes) % (24 * 60)
+
+        val startStr = formatMinutesToAmPm(startMins)
+        val endStr = formatMinutesToAmPm(endMins)
+
+        val durHours = durationMinutes / 60
+        val durMins = durationMinutes % 60
+        val durStr = when {
+            durHours > 0 && durMins > 0 -> "${durHours}h ${durMins}m"
+            durHours > 0 -> "${durHours}h 00m"
+            else -> "${durMins}m"
+        }
+
+        return "$startStr - $endStr • $durStr"
+    }
+
     @Test
     fun `time overlap detection correctly detects conflicting plans`() {
         // Plan 1: 08:00 AM to 09:30 AM (90 mins) -> 480 to 570
@@ -41,6 +69,32 @@ class CalendarEngineTest {
         val dur3 = 90
 
         assertFalse(checkOverlap(start1, dur1, start3, dur3))
+    }
+
+    @Test
+    fun `format plan time range formats strictly on single continuous string`() {
+        val formatted = formatPlanTimeRange("08:00", 60)
+        assertEquals("08:00 AM - 09:00 AM • 1h 00m", formatted)
+
+        val formatted2 = formatPlanTimeRange("14:30", 45)
+        assertEquals("02:30 PM - 03:15 PM • 45m", formatted2)
+    }
+
+    @Test
+    fun `auto suggest next available free time slot`() {
+        val existingTasks = listOf(
+            StudyTaskEntity(title = "Math", date = "2026-10-25", time = "08:00", durationMinutes = 60),
+            StudyTaskEntity(title = "Physics", date = "2026-10-25", time = "09:00", durationMinutes = 45)
+        )
+
+        val latest = existingTasks.maxByOrNull { parseTimeToMinutes(it.time) + it.durationMinutes }
+        assertNotNull(latest)
+        val endMins = parseTimeToMinutes(latest!!.time) + latest.durationMinutes
+        val nextStartH = endMins / 60
+        val nextStartM = endMins % 60
+        val nextFreeTimeStr = String.format("%02d:%02d", nextStartH, nextStartM)
+
+        assertEquals("09:45", nextFreeTimeStr)
     }
 
     @Test

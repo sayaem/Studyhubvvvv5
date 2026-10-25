@@ -1,8 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
@@ -13,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -46,11 +45,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Warning
@@ -75,7 +69,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,8 +77,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -136,7 +127,7 @@ fun CalendarScreen(
     onNavigateToProfile: (() -> Unit)? = null
 ) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
-    val displayHeaderFormat = remember { SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault()) }
+    val monthYearFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
     val dayNumFormat = remember { SimpleDateFormat("d", Locale.getDefault()) }
     val weekDayFormat = remember { SimpleDateFormat("EEE", Locale.getDefault()) }
 
@@ -146,6 +137,7 @@ fun CalendarScreen(
     // Selected date state - initialized to today
     var selectedCalendar by remember { mutableStateOf(Calendar.getInstance()) }
     val selectedDateStr = dateFormat.format(selectedCalendar.time)
+    val selectedMonthYearStr = monthYearFormat.format(selectedCalendar.time)
 
     // Current displayed week start (Monday)
     var currentWeekStart by remember {
@@ -201,7 +193,7 @@ fun CalendarScreen(
                 contentColor = Color.White,
                 shape = CircleShape,
                 modifier = Modifier
-                    .padding(bottom = 16.dp, end = 4.dp)
+                    .padding(bottom = 12.dp, end = 12.dp)
                     .testTag("calendar_add_plan_fab")
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add New Plan", modifier = Modifier.size(28.dp))
@@ -215,9 +207,9 @@ fun CalendarScreen(
                 .padding(paddingValues)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // ==========================================
-            // 1. TOP BAR HEADER
-            // ==========================================
+            // =========================================================================
+            // 1. CLEAN SECONDARY TOP BAR: Bold "Planner" Title & Integrated Date Actions
+            // =========================================================================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -225,80 +217,104 @@ fun CalendarScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(BrandBlue),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.School,
-                            contentDescription = "StudyHub",
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                Column {
+                    Text(
+                        text = "Planner",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            letterSpacing = (-0.5).sp
                         )
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = "StudyHub",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        )
-                        Text(
-                            text = "Plan • Study • Achieve",
-                            fontSize = 11.sp,
+                    )
+                    Text(
+                        text = selectedMonthYearStr,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
                             color = TextSecondary
                         )
-                    }
+                    )
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (onNavigateToNotifications != null) {
-                        IconButton(
-                            onClick = onNavigateToNotifications,
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Notifications,
-                                contentDescription = "Notifications",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    // Previous Week
+                    IconButton(
+                        onClick = {
+                            val newWeek = currentWeekStart.clone() as Calendar
+                            newWeek.add(Calendar.DAY_OF_MONTH, -7)
+                            currentWeekStart = newWeek
+
+                            val newSel = selectedCalendar.clone() as Calendar
+                            newSel.add(Calendar.DAY_OF_MONTH, -7)
+                            selectedCalendar = newSel
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                            contentDescription = "Previous Week",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
 
-                    if (onNavigateToProfile != null) {
-                        val initials = userProfile?.displayName?.split(" ")
-                            ?.mapNotNull { it.firstOrNull()?.toString() }
-                            ?.take(2)?.joinToString("")?.uppercase() ?: "SH"
+                    // Next Week
+                    IconButton(
+                        onClick = {
+                            val newWeek = currentWeekStart.clone() as Calendar
+                            newWeek.add(Calendar.DAY_OF_MONTH, 7)
+                            currentWeekStart = newWeek
 
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(BrandBlue)
-                                .clickable { onNavigateToProfile() },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = initials,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
+                            val newSel = selectedCalendar.clone() as Calendar
+                            newSel.add(Calendar.DAY_OF_MONTH, 7)
+                            selectedCalendar = newSel
+                        },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = "Next Week",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    // Today Jump Button
+                    val isViewingToday = selectedDateStr == todayDateStr
+                    Surface(
+                        onClick = {
+                            selectedCalendar = Calendar.getInstance()
+                            val cur = Calendar.getInstance()
+                            cur.firstDayOfWeek = Calendar.MONDAY
+                            cur.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                            currentWeekStart = cur
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isViewingToday) BrandBlue.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant,
+                        border = if (isViewingToday) androidx.compose.foundation.BorderStroke(1.dp, BrandBlue) else null
+                    ) {
+                        Text(
+                            text = "Today",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isViewingToday) BrandBlue else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                        )
                     }
                 }
             }
 
-            // ==========================================
-            // 2. HORIZONTAL WEEKLY DATE SELECTOR
-            // ==========================================
+            // =========================================================================
+            // 2. UNIFIED HORIZONTAL WEEK STRIP (Primary Date Selector)
+            // =========================================================================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -313,129 +329,57 @@ fun CalendarScreen(
                     val dayName = weekDayFormat.format(dayCal.time)
                     val dayNum = dayNumFormat.format(dayCal.time)
 
-                    // Check if date has scheduled items
+                    // Scheduled task indicator
                     val hasTasks = tasks.any { it.date == dateStr }
                     val hasCompleted = tasks.any { it.date == dateStr && it.status == "COMPLETED" }
 
                     val dotColor = when {
                         isSelected -> Color.White
                         hasCompleted -> StatusSuccess
-                        hasTasks -> BrandTeal
+                        hasTasks -> BrandBlue
                         else -> Color.Transparent
                     }
 
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .padding(horizontal = 2.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(if (isSelected) BrandBlue else Color.Transparent)
+                            .background(
+                                if (isSelected) BrandBlue
+                                else if (isToday) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                                else Color.Transparent
+                            )
                             .clickable {
                                 selectedCalendar = dayCal.clone() as Calendar
                             }
-                            .padding(vertical = 10.dp)
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = dayName,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) Color.White.copy(alpha = 0.9f) else TextSecondary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = dayNum,
-                            fontSize = 16.sp,
-                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
-                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(5.dp)
-                                .clip(CircleShape)
-                                .background(dotColor)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // ==========================================
-            // 3. DATE NAVIGATION & TODAY JUMP BAR
-            // ==========================================
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = displayHeaderFormat.format(selectedCalendar.time),
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    // Previous Week
-                    IconButton(
-                        onClick = {
-                            val newWeek = currentWeekStart.clone() as Calendar
-                            newWeek.add(Calendar.DAY_OF_MONTH, -7)
-                            currentWeekStart = newWeek
-
-                            val newSel = selectedCalendar.clone() as Calendar
-                            newSel.add(Calendar.DAY_OF_MONTH, -7)
-                            selectedCalendar = newSel
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Previous Week", modifier = Modifier.size(20.dp))
-                    }
-
-                    // Next Week
-                    IconButton(
-                        onClick = {
-                            val newWeek = currentWeekStart.clone() as Calendar
-                            newWeek.add(Calendar.DAY_OF_MONTH, 7)
-                            currentWeekStart = newWeek
-
-                            val newSel = selectedCalendar.clone() as Calendar
-                            newSel.add(Calendar.DAY_OF_MONTH, 7)
-                            selectedCalendar = newSel
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Next Week", modifier = Modifier.size(20.dp))
-                    }
-
-                    // Return to Today Button
-                    Surface(
-                        onClick = {
-                            selectedCalendar = Calendar.getInstance()
-                            val cur = Calendar.getInstance()
-                            cur.firstDayOfWeek = Calendar.MONDAY
-                            cur.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                            currentWeekStart = cur
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(Icons.Default.CalendarToday, contentDescription = "Today", modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Today", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = dayName,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isSelected) Color.White.copy(alpha = 0.9f) else TextSecondary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = dayNum,
+                                fontSize = 16.sp,
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Bold,
+                                color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(CircleShape)
+                                    .background(dotColor)
+                            )
                         }
                     }
                 }
@@ -443,22 +387,22 @@ fun CalendarScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // ==========================================
-            // 4. COMPACT DAILY SUMMARY (Row of 3 cards)
-            // ==========================================
+            // =========================================================================
+            // 3. COMPACT DAILY SUMMARY (Cohesive, Soft Unified Surfaces)
+            // =========================================================================
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp),
+                    .padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Card 1: Today's Progress
+                // Card 1: Today's Tasks Progress
                 val progressRatio = if (totalTasksCount > 0) completedTasksCount.toFloat() / totalTasksCount else 0f
                 val progressTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 Card(
                     modifier = Modifier
                         .weight(1.2f)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
@@ -467,11 +411,11 @@ fun CalendarScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(38.dp),
+                            modifier = Modifier.size(36.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Canvas(modifier = Modifier.fillMaxSize()) {
-                                val strokeWidth = 4.dp.toPx()
+                                val strokeWidth = 3.5.dp.toPx()
                                 drawArc(
                                     color = progressTrackColor,
                                     startAngle = -90f,
@@ -496,9 +440,9 @@ fun CalendarScreen(
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
-                            Text("Today's Progress", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            Text("Tasks Done", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                             Text(
-                                text = "$completedTasksCount tasks completed",
+                                text = "$completedTasksCount completed",
                                 fontSize = 10.sp,
                                 color = TextSecondary,
                                 maxLines = 1,
@@ -517,7 +461,7 @@ fun CalendarScreen(
                 Card(
                     modifier = Modifier
                         .weight(1.1f)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
@@ -529,10 +473,10 @@ fun CalendarScreen(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
-                                .background(BrandBlue.copy(alpha = 0.15f)),
+                                .background(BrandBlue.copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(17.dp))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
@@ -546,7 +490,7 @@ fun CalendarScreen(
                 Card(
                     modifier = Modifier
                         .weight(1f)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
+                        .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
@@ -558,10 +502,10 @@ fun CalendarScreen(
                             modifier = Modifier
                                 .size(34.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFF97316).copy(alpha = 0.15f)),
+                                .background(Color(0xFFF97316).copy(alpha = 0.12f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFF97316), modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.LocalFireDepartment, contentDescription = null, tint = Color(0xFFF97316), modifier = Modifier.size(17.dp))
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
@@ -574,9 +518,9 @@ fun CalendarScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // ==========================================
-            // 5. VERTICAL TIME-BASED TIMELINE
-            // ==========================================
+            // =========================================================================
+            // 4. VERTICAL TIME-BASED TIMELINE
+            // =========================================================================
             if (dayTasks.isEmpty()) {
                 // Empty state
                 Box(
@@ -588,7 +532,7 @@ fun CalendarScreen(
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp)),
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f), RoundedCornerShape(20.dp)),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                     ) {
@@ -600,21 +544,21 @@ fun CalendarScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(56.dp)
+                                    .size(52.dp)
                                     .clip(CircleShape)
-                                    .background(BrandBlue.copy(alpha = 0.12f)),
+                                    .background(BrandBlue.copy(alpha = 0.10f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(28.dp))
+                                Icon(Icons.Default.CalendarToday, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(26.dp))
                             }
                             Spacer(modifier = Modifier.height(14.dp))
                             Text(
-                                text = "No Study Plans For This Day",
+                                text = "No Plans For This Day",
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Build your schedule by adding study sessions, revision blocks, homework, or exam goals.",
+                                text = "Keep your schedule organized with study blocks, revision, or exams.",
                                 style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
                                 textAlign = TextAlign.Center
                             )
@@ -639,18 +583,19 @@ fun CalendarScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 96.dp)
                 ) {
                     items(dayTasks, key = { it.id }) { task ->
                         val sub = subjects.find { it.id == task.subjectId }
                         val chap = chapters.find { it.id == task.chapterId }
                         val isCompleted = task.status == "COMPLETED"
 
-                        // Determine theme color & icon based on subject / planType
+                        // Theme color based on category / subject
                         val itemColor = when (task.planType) {
                             "REVISION" -> Color(0xFF0D9488) // Cyan / Teal
                             "EXAM" -> Color(0xFF8B5CF6) // Purple
-                            "ASSIGNMENT" -> Color(0xFFEC4899) // Pink / Rose
+                            "ASSIGNMENT" -> Color(0xFFEC4899) // Pink
                             "BREAK" -> Color(0xFFF59E0B) // Amber
                             "PERSONAL" -> Color(0xFF3B82F6) // Blue
                             else -> sub?.let { parseColorHex(it.colorHex) } ?: BrandTeal
@@ -675,10 +620,10 @@ fun CalendarScreen(
                                 .fillMaxWidth()
                                 .height(IntrinsicSize.Min)
                         ) {
-                            // Left Column: Time label & Vertical Timeline Connector
+                            // Left Column: Time label & Integrated Vertical Line
                             Column(
                                 modifier = Modifier
-                                    .width(70.dp)
+                                    .width(64.dp)
                                     .fillMaxHeight(),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
@@ -686,8 +631,9 @@ fun CalendarScreen(
                                     text = displayStartTime,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextSecondary,
-                                    maxLines = 1
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                    maxLines = 1,
+                                    softWrap = false
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(
@@ -700,16 +646,16 @@ fun CalendarScreen(
                                         // Colored anchor dot
                                         Box(
                                             modifier = Modifier
-                                                .size(10.dp)
+                                                .size(8.dp)
                                                 .clip(CircleShape)
                                                 .background(itemColor)
                                         )
-                                        // Connecting line
+                                        // Connecting timeline line
                                         Box(
                                             modifier = Modifier
                                                 .width(2.dp)
                                                 .weight(1f)
-                                                .background(itemColor.copy(alpha = 0.3f))
+                                                .background(itemColor.copy(alpha = 0.25f))
                                         )
                                     }
                                 }
@@ -717,15 +663,13 @@ fun CalendarScreen(
 
                             Spacer(modifier = Modifier.width(6.dp))
 
-                            // Right Column: Study / Task Card
+                            // Right Column: Cohesive Study / Task Card
                             Card(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .border(1.dp, itemColor.copy(alpha = 0.4f), RoundedCornerShape(18.dp)),
+                                    .border(1.dp, itemColor.copy(alpha = 0.22f), RoundedCornerShape(18.dp)),
                                 shape = RoundedCornerShape(18.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = itemColor.copy(alpha = 0.08f)
-                                )
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -733,25 +677,25 @@ fun CalendarScreen(
                                         .padding(14.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Left Icon Box
+                                    // Category / Subject Icon
                                     Box(
                                         modifier = Modifier
-                                            .size(44.dp)
-                                            .clip(RoundedCornerShape(14.dp))
-                                            .background(itemColor.copy(alpha = 0.2f)),
+                                            .size(42.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(itemColor.copy(alpha = 0.12f)),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
                                             imageVector = itemIcon,
                                             contentDescription = null,
                                             tint = itemColor,
-                                            modifier = Modifier.size(24.dp)
+                                            modifier = Modifier.size(22.dp)
                                         )
                                     }
 
                                     Spacer(modifier = Modifier.width(12.dp))
 
-                                    // Middle Text Info
+                                    // Task Title, Chapter & Non-Wrapping Time Block
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = if (task.planType == "STUDY" && sub != null) sub.name else task.title,
@@ -779,9 +723,13 @@ fun CalendarScreen(
 
                                         Spacer(modifier = Modifier.height(4.dp))
 
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        // Time Range - Strict Single Line Rendering
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
                                             Icon(
-                                                Icons.Default.AccessTime,
+                                                imageVector = Icons.Default.AccessTime,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(12.dp),
                                                 tint = TextSecondary
@@ -790,23 +738,24 @@ fun CalendarScreen(
                                             Text(
                                                 text = formattedTimeRange,
                                                 fontSize = 11.sp,
-                                                color = TextSecondary
+                                                fontWeight = FontWeight.Medium,
+                                                color = TextSecondary,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }
 
                                     Spacer(modifier = Modifier.width(8.dp))
 
-                                    // Right: Status badge & Overflow Menu
+                                    // Right Action: Modern Pill Status Badge & Overflow Menu
                                     Column(horizontalAlignment = Alignment.End) {
                                         Surface(
                                             onClick = { onToggleTaskStatus(task) },
-                                            shape = RoundedCornerShape(20.dp),
-                                            color = if (isCompleted) StatusSuccess.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f),
-                                            border = androidx.compose.foundation.BorderStroke(
-                                                1.dp,
-                                                if (isCompleted) StatusSuccess else MaterialTheme.colorScheme.outline
-                                            )
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (isCompleted) Color(0xFFDCFCE7) else Color(0xFFF1F5F9),
+                                            border = null
                                         ) {
                                             Row(
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -815,15 +764,15 @@ fun CalendarScreen(
                                                 Icon(
                                                     imageVector = if (isCompleted) Icons.Default.Check else Icons.Default.AccessTime,
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(12.dp),
-                                                    tint = if (isCompleted) StatusSuccess else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    modifier = Modifier.size(11.dp),
+                                                    tint = if (isCompleted) Color(0xFF16A34A) else Color(0xFF64748B)
                                                 )
-                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Spacer(modifier = Modifier.width(3.dp))
                                                 Text(
                                                     text = if (isCompleted) "Completed" else "Upcoming",
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.Bold,
-                                                    color = if (isCompleted) StatusSuccess else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    color = if (isCompleted) Color(0xFF16A34A) else Color(0xFF475569)
                                                 )
                                             }
                                         }
@@ -834,7 +783,7 @@ fun CalendarScreen(
                                                 modifier = Modifier.size(28.dp)
                                             ) {
                                                 Icon(
-                                                    Icons.Default.MoreVert,
+                                                    imageVector = Icons.Default.MoreVert,
                                                     contentDescription = "Options",
                                                     modifier = Modifier.size(18.dp),
                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -888,15 +837,15 @@ fun CalendarScreen(
                         }
                     }
 
-                    // Bottom "+ Add New Plan" Dashed Outline Card
+                    // Bottom "+ Add New Plan" Card
                     item {
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .border(
                                     width = 1.dp,
-                                    color = BrandBlue.copy(alpha = 0.5f),
+                                    color = BrandBlue.copy(alpha = 0.3f),
                                     shape = RoundedCornerShape(16.dp)
                                 )
                                 .clickable {
@@ -909,14 +858,14 @@ fun CalendarScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(16.dp),
+                                    .padding(14.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(BrandBlue.copy(alpha = 0.15f)),
+                                        .background(BrandBlue.copy(alpha = 0.12f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(Icons.Default.Add, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(20.dp))
@@ -928,41 +877,93 @@ fun CalendarScreen(
                                 }
                             }
                         }
-                        Spacer(modifier = Modifier.height(60.dp))
                     }
                 }
             }
         }
     }
 
-    // ==========================================
-    // 6. ADD / EDIT PLAN BOTTOM SHEET
-    // ==========================================
+    // =========================================================================
+    // 5. ADD / EDIT PLAN BOTTOM SHEET WITH TIME PICKERS & COLLISION INTELLIGENCE
+    // =========================================================================
     if (showPlanSheet) {
         val currentPlan = editingPlan
+
+        // Auto-suggest next free time slot based on current day tasks
+        val autoSuggestedStartTime = remember(dayTasks, currentPlan) {
+            if (currentPlan?.time != null) {
+                currentPlan.time
+            } else if (dayTasks.isNotEmpty()) {
+                val latestTask = dayTasks.maxByOrNull { parseTimeToMinutes(it.time) + it.durationMinutes }
+                if (latestTask != null && latestTask.time != null) {
+                    val endMins = (parseTimeToMinutes(latestTask.time) + latestTask.durationMinutes) % (24 * 60)
+                    val endH = endMins / 60
+                    val endM = endMins % 60
+                    String.format("%02d:%02d", endH, endM)
+                } else "08:00"
+            } else "08:00"
+        }
+
         var planType by remember { mutableStateOf(currentPlan?.planType ?: "STUDY") }
         var titleInput by remember { mutableStateOf(currentPlan?.title ?: "") }
         var selectedSubjectId by remember { mutableStateOf(currentPlan?.subjectId) }
         var selectedChapterId by remember { mutableStateOf(currentPlan?.chapterId) }
         var dateInput by remember { mutableStateOf(currentPlan?.date ?: selectedDateStr) }
-        var timeInput by remember { mutableStateOf(currentPlan?.time ?: "08:00") }
+        var startTimeInput by remember { mutableStateOf(autoSuggestedStartTime) }
         var durationMinutes by remember { mutableIntStateOf(currentPlan?.durationMinutes ?: 60) }
         var priorityInput by remember { mutableStateOf(currentPlan?.priority ?: "MEDIUM") }
         var notesInput by remember { mutableStateOf(currentPlan?.notes ?: "") }
 
+        // Time Picker interactive dialog states
+        var showStartTimePicker by remember { mutableStateOf(false) }
+        var showEndTimePicker by remember { mutableStateOf(false) }
+
+        val startMins = parseTimeToMinutes(startTimeInput)
+        val endMins = (startMins + durationMinutes) % (24 * 60)
+        val endTimeFormatted = formatMinutesTo24H(endMins)
+
         val chaptersForSubject = chapters.filter { it.subjectId == selectedSubjectId }
 
-        // Overlap detection
-        val conflictingPlan = remember(dateInput, timeInput, durationMinutes, currentPlan) {
-            val newStart = parseTimeToMinutes(timeInput)
-            val newEnd = newStart + durationMinutes
+        // Overlap Conflict Detection
+        val conflictingPlan = remember(dateInput, startMins, durationMinutes, currentPlan, tasks) {
+            val planEnd = startMins + durationMinutes
             tasks.find { existing ->
-                existing.id != currentPlan?.id && existing.date == dateInput && existing.time != null && run {
+                existing.id != currentPlan?.id &&
+                existing.date == dateInput &&
+                existing.time != null &&
+                run {
                     val exStart = parseTimeToMinutes(existing.time)
                     val exEnd = exStart + existing.durationMinutes
-                    maxOf(newStart, exStart) < minOf(newEnd, exEnd)
+                    maxOf(startMins, exStart) < minOf(planEnd, exEnd)
                 }
             }
+        }
+
+        // Dialog for Interactive Time Picker
+        if (showStartTimePicker) {
+            InteractiveTimePickerDialog(
+                initialTimeStr = startTimeInput,
+                title = "Select Start Time",
+                onDismiss = { showStartTimePicker = false },
+                onTimeSelected = { newTime ->
+                    startTimeInput = newTime
+                    showStartTimePicker = false
+                }
+            )
+        }
+
+        if (showEndTimePicker) {
+            InteractiveTimePickerDialog(
+                initialTimeStr = endTimeFormatted,
+                title = "Select End Time",
+                onDismiss = { showEndTimePicker = false },
+                onTimeSelected = { newEndTimeStr ->
+                    val newEndM = parseTimeToMinutes(newEndTimeStr)
+                    val diff = if (newEndM > startMins) newEndM - startMins else (24 * 60 - startMins + newEndM)
+                    durationMinutes = diff.coerceIn(15, 360)
+                    showEndTimePicker = false
+                }
+            )
         }
 
         ModalBottomSheet(
@@ -977,13 +978,13 @@ fun CalendarScreen(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = if (currentPlan == null) "Schedule Study Plan" else "Edit Study Plan",
+                    text = if (currentPlan == null) "Schedule New Plan" else "Edit Plan",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold)
                 )
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Plan Type Selector
-                Text("Plan Category", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                // Plan Category Selector
+                Text("Category", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
                 Spacer(modifier = Modifier.height(6.dp))
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -1017,7 +1018,7 @@ fun CalendarScreen(
                                     imageVector = icon,
                                     contentDescription = null,
                                     tint = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(15.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -1033,7 +1034,7 @@ fun CalendarScreen(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // Subject Selection
+                // Associated Subject Selection
                 if (subjects.isNotEmpty() && planType in listOf("STUDY", "REVISION", "EXAM", "ASSIGNMENT")) {
                     Text("Associated Subject", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
                     Spacer(modifier = Modifier.height(6.dp))
@@ -1119,38 +1120,69 @@ fun CalendarScreen(
                 OutlinedTextField(
                     value = titleInput,
                     onValueChange = { titleInput = it },
-                    label = { Text("Plan Title / Task Description *") },
-                    placeholder = { Text("e.g. Chapter 3 Numericals & Formulas") },
+                    label = { Text("Plan Title / Topic *") },
+                    placeholder = { Text("e.g. Chapter 3 Formulas & Problems") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Start Time & Duration Selectors
+                // Interactive Start Time & End Time Cards
+                Text("Schedule Timing", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    OutlinedTextField(
-                        value = timeInput,
-                        onValueChange = { timeInput = it },
-                        label = { Text("Start Time (HH:mm)") },
-                        placeholder = { Text("08:00") },
+                    // Start Time Box (Interactive Tap to Pick)
+                    Surface(
+                        onClick = { showStartTimePicker = true },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                            Text("Start Time", fontSize = 11.sp, color = TextSecondary)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = formatMinutesToAmPm(startMins),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
 
-                    OutlinedTextField(
-                        value = durationMinutes.toString(),
-                        onValueChange = { durationMinutes = it.toIntOrNull() ?: 30 },
-                        label = { Text("Duration (mins)") },
+                    // End Time Box (Interactive Tap to Pick)
+                    Surface(
+                        onClick = { showEndTimePicker = true },
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f))
+                    ) {
+                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                            Text("End Time", fontSize = 11.sp, color = TextSecondary)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = formatMinutesToAmPm(endMins),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
 
-                // Quick Duration Pills
+                // Quick Duration Adjustment Pills
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1168,52 +1200,75 @@ fun CalendarScreen(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
                             )
                         }
                     }
                 }
 
-                // Calculated End Time Preview
+                // Time Span summary
                 Spacer(modifier = Modifier.height(10.dp))
-                val calculatedTimeRange = formatPlanTimeRange(timeInput, durationMinutes)
+                val calculatedTimeRange = formatPlanTimeRange(startTimeInput, durationMinutes)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.Default.AccessTime, contentDescription = null, tint = BrandBlue, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Time Span: $calculatedTimeRange",
+                        text = calculatedTimeRange,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                // Overlap Warning Banner
+                // Time Intelligence Conflict Warning
                 if (conflictingPlan != null) {
                     Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(StatusWarning.copy(alpha = 0.15f))
-                            .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCA5A5))
                     ) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = StatusWarning, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Schedule Conflict: Overlaps with \"${conflictingPlan.title}\" (${conflictingPlan.time ?: ""})",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = StatusWarning
-                        )
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFDC2626), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Schedule Conflict Detected",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFDC2626)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Time slot overlaps with \"${conflictingPlan.title}\" (${formatPlanTimeRange(conflictingPlan.time, conflictingPlan.durationMinutes)}).",
+                                fontSize = 11.sp,
+                                color = Color(0xFF7F1D1D)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // One-tap conflict resolution button
+                            val nextFreeSlotMins = parseTimeToMinutes(conflictingPlan.time) + conflictingPlan.durationMinutes
+                            val nextFreeSlotStr = formatMinutesTo24H(nextFreeSlotMins)
+                            OutlinedButton(
+                                onClick = {
+                                    startTimeInput = nextFreeSlotStr
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDC2626))
+                            ) {
+                                Text("Shift to next free slot (${formatMinutesToAmPm(nextFreeSlotMins)})", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
 
@@ -1224,16 +1279,19 @@ fun CalendarScreen(
                     value = notesInput,
                     onValueChange = { notesInput = it },
                     label = { Text("Notes / Materials Needed") },
-                    placeholder = { Text("e.g. Bring scientific calculator") },
+                    placeholder = { Text("e.g. Bring formula sheet") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Save / Update Plan Action
+                // Save Action Button - blocked if there is an active conflict
+                val hasConflict = conflictingPlan != null
                 Button(
                     onClick = {
+                        if (hasConflict) return@Button
+
                         val finalTitle = titleInput.trim().ifBlank {
                             if (planType == "STUDY") {
                                 subjects.find { it.id == selectedSubjectId }?.name ?: "Study Plan"
@@ -1245,7 +1303,7 @@ fun CalendarScreen(
                                 onCreatePlan(
                                     finalTitle,
                                     dateInput,
-                                    timeInput.ifBlank { null },
+                                    startTimeInput.ifBlank { null },
                                     durationMinutes,
                                     selectedSubjectId,
                                     selectedChapterId,
@@ -1257,7 +1315,7 @@ fun CalendarScreen(
                                 onCreateTask(
                                     finalTitle,
                                     dateInput,
-                                    timeInput.ifBlank { null },
+                                    startTimeInput.ifBlank { null },
                                     durationMinutes,
                                     selectedSubjectId,
                                     priorityInput,
@@ -1268,7 +1326,7 @@ fun CalendarScreen(
                             val updated = currentPlan.copy(
                                 title = finalTitle,
                                 date = dateInput,
-                                time = timeInput.ifBlank { null },
+                                time = startTimeInput.ifBlank { null },
                                 durationMinutes = durationMinutes,
                                 subjectId = selectedSubjectId,
                                 chapterId = selectedChapterId,
@@ -1282,11 +1340,19 @@ fun CalendarScreen(
                         showPlanSheet = false
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandBlue),
+                    enabled = !hasConflict,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandBlue,
+                        disabledContainerColor = BrandBlue.copy(alpha = 0.4f)
+                    ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = if (currentPlan == null) "Schedule Plan" else "Save Changes",
+                        text = when {
+                            hasConflict -> "Resolve Conflict to Save"
+                            currentPlan == null -> "Schedule Plan"
+                            else -> "Save Changes"
+                        },
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
@@ -1295,9 +1361,9 @@ fun CalendarScreen(
         }
     }
 
-    // ==========================================
-    // 7. DELETE CONFIRMATION DIALOG
-    // ==========================================
+    // =========================================================================
+    // 6. DELETE CONFIRMATION DIALOG
+    // =========================================================================
     planToDelete?.let { plan ->
         AlertDialog(
             onDismissRequest = { planToDelete = null },
@@ -1323,9 +1389,185 @@ fun CalendarScreen(
     }
 }
 
-// ==========================================
+// =========================================================================
+// INTERACTIVE TIME PICKER MODAL DIALOG
+// =========================================================================
+
+@Composable
+private fun InteractiveTimePickerDialog(
+    initialTimeStr: String,
+    title: String,
+    onDismiss: () -> Unit,
+    onTimeSelected: (String) -> Unit
+) {
+    val initialMins = parseTimeToMinutes(initialTimeStr)
+    var selectedHour24 by remember { mutableIntStateOf(initialMins / 60) }
+    var selectedMinute by remember { mutableIntStateOf(initialMins % 60) }
+
+    val isPm = selectedHour24 >= 12
+    var periodIsPm by remember { mutableStateOf(isPm) }
+    var hour12 by remember {
+        val h = selectedHour24 % 12
+        mutableIntStateOf(if (h == 0) 12 else h)
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Large Digital Time Preview
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(vertical = 12.dp, horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = String.format("%02d:%02d", hour12, selectedMinute),
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = BrandBlue
+                    ) {
+                        Text(
+                            text = if (periodIsPm) "PM" else "AM",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // AM / PM Toggle Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        onClick = { periodIsPm = false },
+                        shape = RoundedCornerShape(topStart = 10.dp, bottomStart = 10.dp),
+                        color = if (!periodIsPm) BrandBlue else MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = "AM",
+                            fontWeight = FontWeight.Bold,
+                            color = if (!periodIsPm) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                        )
+                    }
+                    Surface(
+                        onClick = { periodIsPm = true },
+                        shape = RoundedCornerShape(topEnd = 10.dp, bottomEnd = 10.dp),
+                        color = if (periodIsPm) BrandBlue else MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = "PM",
+                            fontWeight = FontWeight.Bold,
+                            color = if (periodIsPm) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Hour Grid (1..12)
+                Text("Hour", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Spacer(modifier = Modifier.height(6.dp))
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items((1..12).toList()) { h ->
+                        val isSel = hour12 == h
+                        Surface(
+                            onClick = { hour12 = h },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSel) BrandBlue else MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = "$h",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Minute Grid
+                Text("Minute", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                Spacer(modifier = Modifier.height(6.dp))
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val minutes = listOf(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55)
+                    items(minutes) { m ->
+                        val isSel = selectedMinute == m
+                        Surface(
+                            onClick = { selectedMinute = m },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isSel) BrandBlue else MaterialTheme.colorScheme.surfaceVariant
+                        ) {
+                            Text(
+                                text = String.format("%02d", m),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = if (isSel) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val calcH24 = when {
+                        periodIsPm && hour12 < 12 -> hour12 + 12
+                        !periodIsPm && hour12 == 12 -> 0
+                        else -> hour12
+                    }
+                    val formatted = String.format("%02d:%02d", calcH24, selectedMinute)
+                    onTimeSelected(formatted)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BrandBlue)
+            ) {
+                Text("Set Time")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+// =========================================================================
 // TIME FORMATTING HELPERS
-// ==========================================
+// =========================================================================
 
 private fun parseTimeToMinutes(timeStr: String?): Int {
     if (timeStr.isNullOrBlank()) return 8 * 60 // Default 8:00 AM
@@ -1339,14 +1581,16 @@ private fun parseTimeToMinutes(timeStr: String?): Int {
     }
 }
 
+private fun formatMinutesTo24H(totalMinutes: Int): String {
+    val norm = (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60)
+    val h = norm / 60
+    val m = norm % 60
+    return String.format("%02d:%02d", h, m)
+}
+
 private fun formatStartTimeOnly(timeStr: String?): String {
     val minsOfDay = parseTimeToMinutes(timeStr)
-    val hour24 = minsOfDay / 60
-    val minute = minsOfDay % 60
-    val isPm = hour24 >= 12
-    val hour12 = if (hour24 == 0) 12 else if (hour24 > 12) hour24 - 12 else hour24
-    val amPm = if (isPm) "PM" else "AM"
-    return String.format("%02d:%02d %s", hour12, minute, amPm)
+    return formatMinutesToAmPm(minsOfDay)
 }
 
 private fun formatPlanTimeRange(timeStr: String?, durationMinutes: Int): String {
@@ -1364,12 +1608,13 @@ private fun formatPlanTimeRange(timeStr: String?, durationMinutes: Int): String 
         else -> "${durMins}m"
     }
 
-    return "$startStr – $endStr  ($durStr)"
+    return "$startStr - $endStr • $durStr"
 }
 
 private fun formatMinutesToAmPm(totalMinutes: Int): String {
-    val hour24 = totalMinutes / 60
-    val minute = totalMinutes % 60
+    val norm = (totalMinutes % (24 * 60) + (24 * 60)) % (24 * 60)
+    val hour24 = norm / 60
+    val minute = norm % 60
     val isPm = hour24 >= 12
     val hour12 = if (hour24 == 0) 12 else if (hour24 > 12) hour24 - 12 else hour24
     val amPm = if (isPm) "PM" else "AM"

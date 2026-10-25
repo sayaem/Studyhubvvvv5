@@ -352,6 +352,9 @@ fun StudyHubApp(
                                             requestAddAdmissionOnCalendar = true
                                             navigateTo(NavigationDestination.AdmissionCalendar)
                                         },
+                                        onOpenStatsClick = {
+                                            navigateTo(NavigationDestination.ProgressAnalytics)
+                                        },
                                         onOpenAdmissionCalendar = {
                                             navigateTo(NavigationDestination.AdmissionCalendar)
                                         },
@@ -520,9 +523,21 @@ fun StudyHubApp(
                         sessions = sessions,
                         subjects = subjects,
                         chapters = chapters,
+                        tasks = tasks,
+                        admissionTargets = admissionTargets,
+                        gamification = focusGamification,
                         onBack = { goBack() },
                         onStartFocus = {
                             navigateTo(NavigationDestination.MainTab(NavDestination.FOCUS))
+                        },
+                        onNavigateToCalendar = {
+                            navigateTo(NavigationDestination.MainTab(NavDestination.CALENDAR))
+                        },
+                        onNavigateToSyllabus = {
+                            navigateTo(NavigationDestination.MainTab(NavDestination.SYLLABUS))
+                        },
+                        onNavigateToAdmission = {
+                            navigateTo(NavigationDestination.AdmissionCalendar)
                         }
                     )
                 }

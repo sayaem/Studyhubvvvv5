@@ -24,7 +24,8 @@ object NotificationEligibilityEvaluator {
         isFocusTimerActive: Boolean,
         recentNotifications: List<NotificationItemEntity>,
         todayNotificationCount: Int,
-        currentHour: Int = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        currentHour: Int = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
+        currentTimeMs: Long = System.currentTimeMillis()
     ): Boolean {
         // 1. Master global study reminders switch (Part 2 rule)
         if (!settings.studyRemindersEnabled) {
@@ -41,24 +42,23 @@ object NotificationEligibilityEvaluator {
             return false
         }
 
-        // 4. Minimum Cooldown Check (Default 3-hour cooldown between proactive notifications)
-        val currentTimeMs = System.currentTimeMillis()
+        // 4. Hourly Cooldown Check (45-minute cooldown to protect hourly slots and prevent rapid consecutive re-triggers)
         val isUrgentDeadline = template.category == NotificationCategory.EXAM_ALERTS ||
                 template.category == NotificationCategory.ADMISSION_READINESS
         
         if (settings.lastNotificationTime > 0 && !isUrgentDeadline) {
-            val minCooldownMs = 3 * 3600_000L // 3 hours
+            val minCooldownMs = 45 * 60_000L // 45 minutes
             val elapsedSinceLast = currentTimeMs - settings.lastNotificationTime
             if (elapsedSinceLast < minCooldownMs) {
                 return false
             }
         }
 
-        // 5. Category Tone Rotation: Avoid repeating exact same category consecutively within 2 hours
+        // 5. Category Tone Rotation: Avoid repeating exact same category consecutively within rapid re-triggers (<30 mins)
         val lastNotif = recentNotifications.firstOrNull()
         if (lastNotif != null && lastNotif.category == template.category.name) {
             val timeSinceLastMs = currentTimeMs - lastNotif.createdAt
-            if (timeSinceLastMs < 2 * 3600_000L) { // Within 2 hours
+            if (timeSinceLastMs < 30 * 60_000L) { // Within 30 mins
                 return false
             }
         }
@@ -77,8 +77,9 @@ object NotificationEligibilityEvaluator {
             return false
         }
 
-        // 7. Repeat avoidance: check if title was shown in recent notifications (last 20)
-        val recentTitles = recentNotifications.take(20).map { it.title }
+        // 7. Repeat avoidance: check if title was shown in recent notifications within the last 12 hours
+        val cutoff12HoursMs = currentTimeMs - (12 * 3600_000L)
+        val recentTitles = recentNotifications.filter { it.createdAt >= cutoff12HoursMs }.take(15).map { it.title }
         if (recentTitles.contains(template.title)) {
             return false
         }
@@ -86,7 +87,7 @@ object NotificationEligibilityEvaluator {
         return true
     }
 
-    private fun isQuietHour(currentHour: Int, startHour: Int, endHour: Int): Boolean {
+    fun isQuietHour(currentHour: Int, startHour: Int, endHour: Int): Boolean {
         if (startHour == endHour) return false
         return if (startHour > endHour) {
             currentHour >= startHour || currentHour < endHour

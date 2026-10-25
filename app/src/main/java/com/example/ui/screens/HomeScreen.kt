@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarToday
@@ -51,7 +54,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.AdmissionTargetEntity
@@ -344,50 +349,48 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            item {
-                QuickActionButton(
-                    icon = Icons.Default.Add,
-                    label = "Add Subject",
-                    color = MaterialTheme.colorScheme.primary,
-                    onClick = onAddSubjectClick
-                )
-            }
-            item {
-                QuickActionButton(
-                    icon = Icons.Default.EventNote,
-                    label = "Today's Plan",
-                    color = Color(0xFF2563EB),
-                    onClick = onTodayPlanClick
-                )
-            }
-            item {
-                QuickActionButton(
-                    icon = Icons.Default.Timer,
-                    label = "Start Focus",
-                    color = Color(0xFFF97316),
-                    onClick = onStartFocusClick
-                )
-            }
-            item {
-                QuickActionButton(
-                    icon = Icons.Default.BarChart,
-                    label = "Stats",
-                    color = Color(0xFF0D9488),
-                    onClick = onOpenStatsClick
-                )
-            }
-            item {
-                QuickActionButton(
-                    icon = Icons.Default.TrackChanges,
-                    label = "Target",
-                    color = Color(0xFF8B5CF6),
-                    onClick = onOpenAdmissionCalendar
-                )
-            }
+            QuickActionButton(
+                icon = Icons.Default.Add,
+                label = "Add Subject",
+                color = MaterialTheme.colorScheme.primary,
+                testTag = "quick_action_add_subject",
+                onClick = onAddSubjectClick
+            )
+            QuickActionButton(
+                icon = Icons.AutoMirrored.Filled.EventNote,
+                label = "Today's Plan",
+                color = Color(0xFF2563EB),
+                testTag = "quick_action_todays_plan",
+                onClick = onTodayPlanClick
+            )
+            QuickActionButton(
+                icon = Icons.Default.Timer,
+                label = "Start Focus",
+                color = Color(0xFFF97316),
+                testTag = "quick_action_start_focus",
+                onClick = onStartFocusClick
+            )
+            QuickActionButton(
+                icon = Icons.Default.BarChart,
+                label = "Stats",
+                color = Color(0xFF0D9488),
+                testTag = "quick_action_stats",
+                onClick = onOpenStatsClick
+            )
+            QuickActionButton(
+                icon = Icons.Default.TrackChanges,
+                label = "Target",
+                color = Color(0xFF8B5CF6),
+                testTag = "quick_action_target",
+                onClick = onOpenAdmissionCalendar
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -663,37 +666,41 @@ fun QuickActionButton(
     icon: ImageVector,
     label: String,
     color: Color,
+    testTag: String = "",
     onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
+            .widthIn(min = 60.dp, max = 74.dp)
             .clip(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(4.dp)
+            .then(if (testTag.isNotEmpty()) Modifier.testTag(testTag) else Modifier)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(54.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .background(color.copy(alpha = 0.14f)),
+                .background(color.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
                 tint = color,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = label,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
-            softWrap = false
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

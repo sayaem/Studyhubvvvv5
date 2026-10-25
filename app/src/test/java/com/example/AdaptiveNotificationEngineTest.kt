@@ -79,13 +79,15 @@ class AdaptiveNotificationEngineTest {
     @Test
     fun testMinCooldownEnforcement() {
         val template = NotificationContentLibrary.ALL_NOTIFICATIONS.first { it.id == "N031" }
-        val settings = AppSettingsEntity(
-            lastNotificationTime = System.currentTimeMillis() - (1 * 3600_000L) // 1 hour ago
-        )
+        val now = System.currentTimeMillis()
 
-        val eligible = NotificationEligibilityEvaluator.isEligible(
+        // 15 minutes ago (within 45-min cooldown) -> suppressed
+        val settingsRecent = AppSettingsEntity(
+            lastNotificationTime = now - (15 * 60_000L)
+        )
+        val eligibleRecent = NotificationEligibilityEvaluator.isEligible(
             template = template,
-            settings = settings,
+            settings = settingsRecent,
             userProfile = null,
             subjects = emptyList(),
             chapters = emptyList(),
@@ -95,9 +97,31 @@ class AdaptiveNotificationEngineTest {
             isFocusTimerActive = false,
             recentNotifications = emptyList(),
             todayNotificationCount = 0,
-            currentHour = 14
+            currentHour = 14,
+            currentTimeMs = now
         )
-        assertFalse("Notifications must be suppressed during the 3-hour cooldown window", eligible)
+        assertFalse("Notifications must be suppressed during rapid re-trigger window (<45 mins)", eligibleRecent)
+
+        // 60 minutes ago (next hourly slot) -> eligible
+        val settingsHourly = AppSettingsEntity(
+            lastNotificationTime = now - (60 * 60_000L)
+        )
+        val eligibleHourly = NotificationEligibilityEvaluator.isEligible(
+            template = template,
+            settings = settingsHourly,
+            userProfile = null,
+            subjects = emptyList(),
+            chapters = emptyList(),
+            tasks = emptyList(),
+            admissionTargets = emptyList(),
+            notes = emptyList(),
+            isFocusTimerActive = false,
+            recentNotifications = emptyList(),
+            todayNotificationCount = 0,
+            currentHour = 14,
+            currentTimeMs = now
+        )
+        assertTrue("Notifications must be allowed in the next hourly window (60 mins later)", eligibleHourly)
     }
 
     @Test

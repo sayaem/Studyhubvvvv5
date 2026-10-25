@@ -1031,9 +1031,10 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
             try {
                 val settings = repository.getAppSettingsSync() ?: AppSettingsEntity()
                 if (settings.studyRemindersEnabled) {
-                    com.example.notifications.NotificationScheduler.scheduleNextAdaptiveOpportunity(
+                    com.example.notifications.NotificationScheduler.scheduleNextHourlyCheck(
                         context = getApplication(),
-                        delayMinutes = 180L
+                        quietHoursStart = settings.quietHoursStartHour,
+                        quietHoursEnd = settings.quietHoursEndHour
                     )
                 }
             } catch (e: Exception) {
@@ -1049,9 +1050,10 @@ class StudyHubViewModel(application: Application) : AndroidViewModel(application
             repository.saveAppSettings(updated)
 
             if (enabled) {
-                com.example.notifications.NotificationScheduler.scheduleNextAdaptiveOpportunity(
+                com.example.notifications.NotificationScheduler.scheduleNextHourlyCheck(
                     context = getApplication(),
-                    delayMinutes = 60L
+                    quietHoursStart = updated.quietHoursStartHour,
+                    quietHoursEnd = updated.quietHoursEndHour
                 )
             } else {
                 com.example.notifications.NotificationScheduler.cancelPendingNotifications(getApplication())
